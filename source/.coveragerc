@@ -1,0 +1,15 @@
+[run]
+omit =
+    infrastructure/setup.py
+    infrastructure/cdk.out/*
+    tests/*
+    cdk_solution_helper_py/*
+    loadtest/*
+    setup.py
+source =
+    infrastructure
+
+[report]
+fail_under = 82
+exclude_lines =
+    setuptools
