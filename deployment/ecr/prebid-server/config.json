@@ -1,0 +1,4 @@
+{
+    "GIT_TAG_VERSION": "2.12.0",
+    "MVN_CLI_OPTIONS": "-Dmaven.test.skip"
+}

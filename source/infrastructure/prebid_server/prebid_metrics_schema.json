@@ -1,0 +1,63 @@
+{
+    "Counter": {
+        "container_id": "string",
+        "name": "string",
+        "timestamp": "timestamp",
+        "count": "int"
+    },
+    "Gauge": {
+        "container_id": "string",
+        "name": "string",
+        "timestamp": "timestamp",
+        "value": "string"
+    },
+    "Histogram": {
+        "container_id": "string",
+        "name": "string",
+        "timestamp": "timestamp",
+        "count": "bigint",
+        "min": "bigint",
+        "max": "bigint",
+        "mean": "double",
+        "stddev": "double",
+        "median": "double",
+        "p75": "double",
+        "p95": "double",
+        "p98": "double",
+        "p99": "double",
+        "p999": "double" 
+    },
+    "Meter": {
+        "container_id": "string",
+        "name": "string",
+        "timestamp": "timestamp",
+        "count": "bigint",
+        "mean_rate": "double",
+        "m1": "double",
+        "m5": "double",
+        "m15": "double",
+        "rate_unit": "string"
+    },
+    "Timer": {
+        "container_id": "string",
+        "name": "string",
+        "timestamp": "timestamp",
+        "count": "bigint",
+        "min": "double",
+        "max": "double",
+        "mean": "double",
+        "stddev": "double",
+        "median": "double",
+        "p75": "double",
+        "p95": "double",
+        "p98": "double",
+        "p99": "double",
+        "p999": "double",
+        "mean_rate": "double",
+        "m1": "double",
+        "m5": "double",
+        "m15": "double",
+        "rate_unit": "string",
+        "duration_unit": "string"
+    }
+}
