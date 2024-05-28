@@ -33,8 +33,8 @@ The following procedures assumes that all the OS-level configuration has been co
 * [AWS Command Line Interface](https://aws.amazon.com/cli/)
 * [Python](https://www.python.org/) 3.11 or newer
 * [Node.js](https://nodejs.org/en/) 16.x or newer 
-* [AWS CDK](https://aws.amazon.com/cdk/) 2.7.0 or newer 
-* [Amazon Corretto OpenJDK](https://docs.aws.amazon.com/corretto/) 11
+* [AWS CDK](https://aws.amazon.com/cdk/) 2.140.0 or newer 
+* [Amazon Corretto OpenJDK](https://docs.aws.amazon.com/corretto/) 17
 * [Docker](https://docs.docker.com/engine/)
 * [AWS access key ID and secret access key](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) configured in your environment with AdministratorAccess equivalent permissions
 
