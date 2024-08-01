@@ -296,7 +296,7 @@ class PrebidServerStack(SolutionStack):
                     "ecr-public:GetRepositoryCatalogData",
                     "ecr-public:GetRegistryCatalogData",
                 ],
-                resources=["*"],
+                resources=["*"], #NOSONAR
             )
         )
 

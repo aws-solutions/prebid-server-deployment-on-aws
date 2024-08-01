@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 from pathlib import Path
 
 CUSTOM_RESOURCES_PATH = Path(__file__).absolute().parents[1] / "custom_resources"

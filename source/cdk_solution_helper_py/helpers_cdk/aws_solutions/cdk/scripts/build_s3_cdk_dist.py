@@ -187,7 +187,7 @@ def validate_version_code(ctx, param, value):
         return value
     else:
         raise click.BadParameter(
-            "please specifiy major, minor and patch versions, e.g. v1.0.0"
+            "please specifiy major, minor and patch versions, e.g. v1.0.1"
         )
 
 

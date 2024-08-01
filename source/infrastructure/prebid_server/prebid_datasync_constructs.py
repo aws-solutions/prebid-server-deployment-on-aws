@@ -477,7 +477,7 @@ class EfsCleanup(Construct):
                     statements=[
                         iam.PolicyStatement(
                             actions=["ec2:DeleteNetworkInterface"],
-                            resources=["*"],
+                            resources=["*"], #NOSONAR
                             conditions={
                                 "StringEquals": {"ec2:Vpc": f"{self.vpc.vpc_arn}"}
                             },
@@ -487,7 +487,7 @@ class EfsCleanup(Construct):
                                 "ec2:DescribeNetworkInterfaces",
                                 "ec2:DetachNetworkInterface",
                             ],
-                            resources=["*"],
+                            resources=["*"], #NOSONAR
                             conditions={
                                 "StringEquals": {
                                     globals.RESOURCE_NAMESPACE: [Aws.ACCOUNT_ID]

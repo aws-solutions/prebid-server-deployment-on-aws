@@ -10,3 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - All files, initial version
+
+## [1.0.1] - 2024-08-02
+
+- Remove python `setuptools` and `pip` from prebid server docker image
+- Include missing copyright header for `source/infrastructure/prebid_server/stack_constants.py`
