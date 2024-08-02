@@ -5,6 +5,11 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 
 # Setup environment for building prebid-server-java
 RUN yum -y install maven-amazon-corretto17
+
+# Remove python setuptools and package installer
+RUN yum -y remove python-setuptools
+RUN yum -y remove python-pip 
+
 RUN yum -y install git
 RUN yum -y install jq
 RUN git clone https://github.com/prebid/prebid-server-java.git
