@@ -291,6 +291,7 @@ class EfsCleanup(Construct):
             layers=[
                 PowertoolsLayer.get_or_create(self),
                 SolutionsLayer.get_or_create(self),
+                self.metrics_layer,
             ],
             environment={
                 "SOLUTION_ID": self.node.try_get_context("SOLUTION_ID"),
@@ -306,7 +307,24 @@ class EfsCleanup(Construct):
         container_lambda_function_policy = iam.Policy(
             self,
             "ContainerLambdaPolicy",
-            statements=[VPC_NW_INTERFACE_POLICY_STATEMENT],
+            statements=[
+                VPC_NW_INTERFACE_POLICY_STATEMENT,
+                iam.PolicyStatement(
+                    actions=[
+                        "cloudwatch:PutMetricData",
+                    ],
+                    resources=[
+                        "*"  # NOSONAR
+                    ],
+                    conditions={
+                        "StringEquals": {
+                            "cloudwatch:namespace": self.node.try_get_context(
+                                "METRICS_NAMESPACE"
+                            )
+                        }
+                    },
+                ),
+            ],
         )
         container_lambda_function.role.attach_inline_policy(
             container_lambda_function_policy

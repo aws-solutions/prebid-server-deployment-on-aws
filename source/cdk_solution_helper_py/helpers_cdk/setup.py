@@ -43,7 +43,7 @@ setuptools.setup(
         "aws_cdk_lib>=2.7.0",
         "Click>=7.1.2",
         "boto3>=1.17.52",
-        "requests>=2.31.0",
+        "requests>=2.32.3",
         "crhelper>=2.0.6",
     ],
     entry_points="""
