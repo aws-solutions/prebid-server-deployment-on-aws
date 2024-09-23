@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Include missing copyright header for `source/infrastructure/prebid_server/stack_constants.py`
 
 
-## [1.0.2] - 2024-09-20
+## [1.0.2] - 2024-09-23
 
 - Upgrade Python `requests` package to version 2.32.3 in requirements.txt
 - Bug fix for launch failure of EfsCleanupContainerStop Lambda function
