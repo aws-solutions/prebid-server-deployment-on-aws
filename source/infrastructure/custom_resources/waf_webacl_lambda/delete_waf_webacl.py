@@ -6,13 +6,16 @@ This module is a custom lambda for deletion of Waf Web ACL and associations
 """
 
 import boto3
+import os
+from botocore import config
 from aws_lambda_powertools import Logger
 from crhelper import CfnResource
-
 
 logger = Logger(utc=True, service="waf-custom-lambda")
 helper = CfnResource(log_level="ERROR", boto_level="ERROR")
 
+SOLUTION_ID = os.environ["SOLUTION_ID"]
+SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
 
 def event_handler(event, context):
     """
@@ -25,7 +28,11 @@ def event_handler(event, context):
 
 @helper.delete
 def on_delete(event, _):
-    cf_client = boto3.client("cloudfront")
+    # Add the solution identifier to boto3 requests for attributing service API usage
+    boto_config = {
+        "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+    }
+    cf_client = boto3.client("cloudfront", config=config.Config(**boto_config))
 
     # Dissociate web acl resource before deleting web acl
     cf_distribution_id = event["ResourceProperties"]["CF_DISTRIBUTION_ID"]

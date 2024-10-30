@@ -5,7 +5,9 @@
 This module is a custom lambda for enabling access logs for ALB
 """
 
+import os
 import boto3
+from botocore import config
 from aws_lambda_powertools import Logger
 from crhelper import CfnResource
 
@@ -13,6 +15,8 @@ from crhelper import CfnResource
 logger = Logger(utc=True, service="alb-access-log-lambda")
 helper = CfnResource(log_level="ERROR", boto_level="ERROR")
 
+SOLUTION_ID = os.environ["SOLUTION_ID"]
+SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
 
 def event_handler(event, context):
     """
@@ -22,15 +26,17 @@ def event_handler(event, context):
     logger.info(event)
     helper(event, context)
 
-    
+
 @helper.create
 def on_create(event, _) -> None:
     """
     Function to enable access logging for ALB
     """
-
-    elbv2_client = boto3.client("elbv2")
-
+    # Add the solution identifier to boto3 requests for attributing service API usage
+    boto_config = {
+        "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+    }
+    elbv2_client = boto3.client("elbv2", config=config.Config(**boto_config))
     alb_arn = event["ResourceProperties"]["ALB_ARN"]
     access_log_bucket = event["ResourceProperties"]["ALB_LOG_BUCKET"]
 

@@ -67,8 +67,8 @@ class Metrics(Construct):
 
         properties = {
             "ServiceToken": self._metrics_function.function_arn,
-            "Solution": self.node.try_get_context("SOLUTION_NAME"),
-            "Version": self.node.try_get_context("VERSION"),
+            "Solution": self.node.try_get_context("SOLUTION_ID"),
+            "Version": self.node.try_get_context("SOLUTION_VERSION"),
             "Region": Aws.REGION,
             **metrics,
         }

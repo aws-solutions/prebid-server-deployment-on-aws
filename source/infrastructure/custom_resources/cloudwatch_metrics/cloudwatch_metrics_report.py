@@ -35,7 +35,7 @@ METRICS_ENDPOINT = "https://metrics.awssolutionsbuilder.com/generic"
 
 
 class CloudwatchMetricsReport:
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.cloudwatch_client = get_service_client("cloudwatch")
         self.secrets_manager_client = get_service_client("secretsmanager")
         self.ec2_client = get_service_client("ec2")
@@ -44,16 +44,17 @@ class CloudwatchMetricsReport:
         self.start_time = self.end_time - timedelta(seconds=SECONDS_IN_A_DAY)
         self.statistics = ["Sum", "Minimum", "Maximum"]
         self.uuid = self.get_uuid()
-        self.event = kwargs["event"]
-        self.context = kwargs["context"]
 
-    def data_init(self):
+    @staticmethod
+    def data_init():
         return {"Data": {}, "MetricData": {}}
 
-    def resolve_dt_time_format(self, datetime_obj):
+    @staticmethod
+    def resolve_dt_time_format(datetime_obj):
         return datetime_obj.strftime(DT_TIME_FORMAT)
 
-    def sum_datapoints(self, datapoints, stat="Sum"):
+    @staticmethod
+    def sum_datapoints(datapoints, stat="Sum"):
         if len(datapoints) > 1:
             logger.warning(
                 "Got "
@@ -69,7 +70,7 @@ class CloudwatchMetricsReport:
         return total
 
     def get_metric_statistics(
-        self, metrics_namespace, metric_name, statistics, dimensions
+            self, metrics_namespace, metric_name, statistics, dimensions
     ):
         return self.cloudwatch_client.get_metric_statistics(
             Namespace=metrics_namespace,
@@ -82,17 +83,14 @@ class CloudwatchMetricsReport:
         )
 
     def prepare_metric_data(
-        self, metric_tag, metric_name, response, sum_all_datapoints=True
+            self, metric_tag, metric_name, response, sum_all_datapoints=True
     ):
         data = self.data_init()
         datapoints = response.get("Datapoints", [])
         # Add datapoints to the reporting payload:
         if datapoints:
             # Add the sum to the reporting payload:
-            if metric_tag:
-                metric_tag = f"{metric_tag}-"
-            else:
-                metric_tag = ""
+            metric_tag = f"{metric_tag}-" if metric_tag else ""
 
             data["Data"][f"{metric_tag}{metric_name}"] = self.sum_datapoints(datapoints)
             if sum_all_datapoints:
@@ -111,20 +109,25 @@ class CloudwatchMetricsReport:
         data = self.data_init()
         for metric_name in metrics_to_sum:
             # Sum all values for the metric over the past 24 hours:
-            lambda_stat_response = self.get_metric_statistics(
-                metrics_namespace=METRICS_NAMESPACE,
-                metric_name=metric_name,
-                statistics=self.statistics,
-                dimensions=[{"Name": "stack-name", "Value": STACK_NAME}],
-            )
-            data["Data"].update(
-                self.prepare_metric_data(
-                    response=lambda_stat_response,
+            try:
+                lambda_stat_response = self.get_metric_statistics(
+                    metrics_namespace=METRICS_NAMESPACE,
                     metric_name=metric_name,
-                    metric_tag=metric_tag,
-                    sum_all_datapoints=False,
+                    statistics=self.statistics,
+                    dimensions=[{"Name": "stack-name", "Value": STACK_NAME}],
                 )
-            )
+                data["Data"].update(
+                    self.prepare_metric_data(
+                        response=lambda_stat_response,
+                        metric_name=metric_name,
+                        metric_tag=metric_tag,
+                        sum_all_datapoints=False,
+                    )
+                )
+            except Exception as e:
+                logger.info(f"Fail to prepare metrics data for {metric_name}. Error: {e}")
+                continue
+
         return data
 
     def get_cloudformation_metrics(self):
@@ -153,38 +156,40 @@ class CloudwatchMetricsReport:
             ],
         )
         for cf_cw_metric in cf_cw_response.get("Metrics", []):
-            cf_response = self.get_metric_statistics(
-                metrics_namespace=namespace,
-                metric_name=cf_cw_metric["MetricName"],
-                statistics=self.statistics,
-                dimensions=cf_cw_metric["Dimensions"],
-            )
-            data["Data"].update(
-                self.prepare_metric_data(
-                    response=cf_response,
-                    metric_name=cf_cw_metric["MetricName"],
-                    metric_tag=metric_tag,
+            cf_cw_metric_name = cf_cw_metric["MetricName"]
+            try:
+                cf_response = self.get_metric_statistics(
+                    metrics_namespace=namespace,
+                    metric_name=cf_cw_metric_name,
+                    statistics=self.statistics,
+                    dimensions=cf_cw_metric["Dimensions"],
                 )
-            )
-            metric = f"{metric_tag}-{cf_cw_metric['MetricName']}"
-            if not data["MetricData"].get(metric):
-                data["MetricData"][metric] = {}
-            data["MetricData"][metric].update(
-                {
-                    "value": data["Data"][metric],
-                    "dimensions": cf_cw_metric["Dimensions"],
-                    "datapoints": data["Data"].pop("datapoints"),
-                }
-            )
+                data["Data"].update(
+                    self.prepare_metric_data(
+                        response=cf_response,
+                        metric_name=cf_cw_metric_name,
+                        metric_tag=metric_tag,
+                    )
+                )
+                metric = f"{metric_tag}-{cf_cw_metric_name}"
+                if not data["MetricData"].get(metric):
+                    data["MetricData"][metric] = {}
+                data["MetricData"][metric].update(
+                    {
+                        "value": data["Data"][metric],
+                        "dimensions": cf_cw_metric["Dimensions"],
+                        "datapoints": data["Data"].pop("datapoints"),
+                    }
+                )
+            except Exception as e:
+                logger.info(f"Fail to prepare metrics data for {cf_cw_metric_name}. Error: {e}")
+                continue
 
         return data
 
-    def get_nat_gateway_metrics(self):
-        # NAT gateway
-        metric_tag = "NATGateway"
-        namespace = f"AWS/{metric_tag}"
-        data = self.data_init()
-        for subnet_id in json.loads(os.environ["SUBNET_IDS"]):
+    def get_nat_gateway_ids(self, subnet_ids):
+        nat_gateway_ids = []
+        for subnet_id in subnet_ids:
             nat_gateway_response = self.ec2_client.describe_nat_gateways(
                 Filters=[
                     {
@@ -195,39 +200,55 @@ class CloudwatchMetricsReport:
                     },
                 ]
             )
+            nat_gateway_ids.extend([
+                nat_gateway.get("NatGatewayId") for nat_gateway in nat_gateway_response.get("NatGateways", [])
+                if nat_gateway.get("NatGatewayId")
+            ])
 
-            for nat_gateway in nat_gateway_response.get("NatGateways"):
-                nat_gateway_id = nat_gateway.get("NatGatewayId")
-                if nat_gateway_id:
-                    nat_cw_response = self.cloudwatch_client.list_metrics(
-                        Namespace=namespace,
-                        Dimensions=[{"Name": "NatGatewayId", "Value": nat_gateway_id}],
+        return nat_gateway_ids
+
+    def get_nat_gateway_metrics(self):
+        # NAT gateway
+        metric_tag = "NATGateway"
+        namespace = f"AWS/{metric_tag}"
+        data = self.data_init()
+        subnet_ids = json.loads(os.environ["SUBNET_IDS"])
+        nat_gateway_ids = self.get_nat_gateway_ids(subnet_ids)
+        for nat_gateway_id in nat_gateway_ids:
+            nat_cw_response = self.cloudwatch_client.list_metrics(
+                Namespace=namespace,
+                Dimensions=[{"Name": "NatGatewayId", "Value": nat_gateway_id}],
+            )
+            for nat_metric in nat_cw_response.get("Metrics", []):
+                nat_metric_name = nat_metric["MetricName"]
+                try:
+                    nat_cw_stat_response = self.get_metric_statistics(
+                        metrics_namespace=namespace,
+                        metric_name=nat_metric_name,
+                        statistics=self.statistics,
+                        dimensions=nat_metric["Dimensions"],
                     )
-                    for nat_metric in nat_cw_response.get("Metrics", []):
-                        nat_cw_stat_response = self.get_metric_statistics(
-                            metrics_namespace=namespace,
-                            metric_name=nat_metric["MetricName"],
-                            statistics=self.statistics,
-                            dimensions=nat_metric["Dimensions"],
-                        )
 
-                        data["Data"].update(
-                            self.prepare_metric_data(
-                                response=nat_cw_stat_response,
-                                metric_name=nat_metric["MetricName"],
-                                metric_tag=metric_tag,
-                            )
+                    data["Data"].update(
+                        self.prepare_metric_data(
+                            response=nat_cw_stat_response,
+                            metric_name=nat_metric_name,
+                            metric_tag=metric_tag,
                         )
-                        metric = f"{metric_tag}-{nat_metric['MetricName']}"
-                        if not data["MetricData"].get(metric):
-                            data["MetricData"][metric] = {}
-                        data["MetricData"][metric].update(
-                            {
-                                "value": data["Data"][metric],
-                                "dimensions": nat_metric["Dimensions"],
-                                "datapoints": data["Data"].pop("datapoints"),
-                            }
-                        )
+                    )
+                    metric = f"{metric_tag}-{nat_metric_name}"
+                    if not data["MetricData"].get(metric):
+                        data["MetricData"][metric] = {}
+                    data["MetricData"][metric].update(
+                        {
+                            "value": data["Data"][metric],
+                            "dimensions": nat_metric["Dimensions"],
+                            "datapoints": data["Data"].pop("datapoints"),
+                        }
+                    )
+                except Exception as e:
+                    logger.info(f"Fail to prepare metrics data for {nat_metric_name}. Error: {e}")
+                    continue
 
         return data
 
@@ -243,29 +264,34 @@ class CloudwatchMetricsReport:
             ],
         )
         for elb_metric in elb_response.get("Metrics", []):
-            elb_stat_response = self.get_metric_statistics(
-                metrics_namespace=namespace,
-                metric_name=elb_metric["MetricName"],
-                statistics=["SampleCount", "Average", *self.statistics],
-                dimensions=elb_metric["Dimensions"],
-            )
-            data["Data"].update(
-                self.prepare_metric_data(
-                    response=elb_stat_response,
-                    metric_name=elb_metric["MetricName"],
-                    metric_tag=metric_tag,
+            elb_metric_name = elb_metric["MetricName"]
+            try:
+                elb_stat_response = self.get_metric_statistics(
+                    metrics_namespace=namespace,
+                    metric_name=elb_metric_name,
+                    statistics=["SampleCount", "Average", *self.statistics],
+                    dimensions=elb_metric["Dimensions"],
                 )
-            )
-            metric = f"{metric_tag}-{elb_metric['MetricName']}"
-            if not data["MetricData"].get(metric):
-                data["MetricData"][metric] = {}
-            data["MetricData"][metric].update(
-                {
-                    "value": data["Data"][metric],
-                    "dimensions": elb_metric["Dimensions"],
-                    "datapoints": data["Data"].pop("datapoints"),
-                }
-            )
+                data["Data"].update(
+                    self.prepare_metric_data(
+                        response=elb_stat_response,
+                        metric_name=elb_metric_name,
+                        metric_tag=metric_tag,
+                    )
+                )
+                metric = f"{metric_tag}-{elb_metric_name}"
+                if not data["MetricData"].get(metric):
+                    data["MetricData"][metric] = {}
+                data["MetricData"][metric].update(
+                    {
+                        "value": data["Data"][metric],
+                        "dimensions": elb_metric["Dimensions"],
+                        "datapoints": data["Data"].pop("datapoints"),
+                    }
+                )
+            except Exception as e:
+                logger.info(f"Fail to prepare metrics data for {elb_metric_name}. Error: {e}")
+                continue
 
         return data
 
@@ -279,22 +305,27 @@ class CloudwatchMetricsReport:
             "Solution": SOLUTION_ID,
             "Version": SOLUTION_VERSION,
             "UUID": self.uuid,
-            "TimestampUTC": self.resolve_dt_time_format(self.timestamp),
+            "Timestamp": self.resolve_dt_time_format(self.timestamp),
             "StartTime": self.resolve_dt_time_format(self.start_time),
             "EndTime": self.resolve_dt_time_format(self.end_time),
             **self.data_init(),
         }
 
-        for metric_func in [
+        metric_funcs = [
             "get_lambda_metrics",
             "get_cloudformation_metrics",
-            "get_cloudfront_metrics",
             "get_nat_gateway_metrics",
             "get_application_elb_metrics",
-        ]:
+        ]
+
+        if os.environ.get("CF_DISTRIBUTION_ID"):
+            metric_funcs.append("get_cloudfront_metrics")
+
+        for metric_func in metric_funcs:
             metric_report_data = getattr(self, metric_func)()
             if metric_func not in ["get_lambda_metrics", "get_cloudformation_metrics"]:
-                self.put_metric_data(metric_report_data["MetricData"])
+                if metric_report_data["MetricData"]:
+                    self.put_metric_data(metric_report_data["MetricData"])
             data["Data"].update(metric_report_data["Data"])
 
         data.pop("MetricData")
@@ -330,15 +361,15 @@ def event_handler(event, context):
     logger.info("We got the following event:\n")
     logger.info("event:\n {s}".format(s=event))
     logger.info("context:\n {s}".format(s=context))
-    send_metrics(event, context)
+    send_metrics()
 
 
-def send_metrics(event, context):
+def send_metrics():
     """
     This function is responsible for reporting cloudwatch metrics.
     """
 
-    cloudwatch_metrics_report = CloudwatchMetricsReport(event=event, context=context)
+    cloudwatch_metrics_report = CloudwatchMetricsReport()
     data = cloudwatch_metrics_report.get_metrics_report()
 
     # Send metric data:

@@ -15,7 +15,30 @@ from awsglue.dynamicframe import DynamicFrame
 import concurrent.futures
 import re
 import boto3
+from botocore import config
+import os
 
+args = getResolvedOptions(sys.argv, [
+    "SOLUTION_ID",
+    "SOLUTION_VERSION",
+    "JOB_NAME",
+    "SOURCE_BUCKET",
+    "OUTPUT_BUCKET",
+    "DATABASE_NAME",
+    "ATHENA_QUERY_BUCKET",
+    "AWS_REGION",
+    "object_keys"
+    ]
+)
+
+SOLUTION_ID = args["SOLUTION_ID"]
+SOLUTION_VERSION = args["SOLUTION_VERSION"]
+SOURCE_BUCKET = args["SOURCE_BUCKET"]
+OUTPUT_BUCKET = args["OUTPUT_BUCKET"]
+DATABASE_NAME = args["DATABASE_NAME"]
+ATHENA_QUERY_BUCKET = args["ATHENA_QUERY_BUCKET"]
+AWS_REGION = args["AWS_REGION"]
+OBJECT_KEYS = json.loads(args["object_keys"])
 
 class GroupFilter:
     def __init__(self, name, filters):
@@ -56,7 +79,11 @@ def create_metric_node(node, columns):
 
 
 def get_glue_schema(database_name, table_name):
-    client = boto3.client('glue')
+    # Add the solution identifier to boto3 requests for attributing service API usage
+    boto_config = {
+        "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+    }
+    client = boto3.client('glue', config=config.Config(**boto_config))
     response = client.get_table(
         DatabaseName=database_name,
         Name=table_name,
@@ -82,7 +109,12 @@ def map_data_types(node, schema):
 
 
 def repair_table(database_name, table_name, region):
-    client = boto3.client("athena", region_name=region)
+    # Add the solution identifier to boto3 requests for attributing service API usage
+    boto_config = {
+        "region_name": region,
+        "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+    }
+    client = boto3.client("athena", config=config.Config(**boto_config))
     client.start_query_execution(
         QueryString=f"MSCK REPAIR TABLE `{database_name}`.`{table_name}`;",
         QueryExecutionContext={
@@ -93,32 +125,14 @@ def repair_table(database_name, table_name, region):
         }
     )
 
-
-args = getResolvedOptions(sys.argv, [
-    "JOB_NAME", 
-    "SOURCE_BUCKET", 
-    "OUTPUT_BUCKET",
-    "DATABASE_NAME",
-    "ATHENA_QUERY_BUCKET",
-    "AWS_REGION",
-    "object_keys"
-    ]
-)
-
+# Initialize Job Process
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-SOURCE_BUCKET = args["SOURCE_BUCKET"]
-OUTPUT_BUCKET = args["OUTPUT_BUCKET"]
-DATABASE_NAME = args["DATABASE_NAME"]
-ATHENA_QUERY_BUCKET = args["ATHENA_QUERY_BUCKET"]
-AWS_REGION = args["AWS_REGION"]
-OBJECT_KEYS = json.loads(args["object_keys"])
-
-# Load soarce data from S3
+# Load source data from S3
 df_node = glueContext.create_dynamic_frame.from_options(
     format_options={
         "multiline": False,
@@ -182,18 +196,23 @@ for metric in metric_list:
         dfc=type_split_node,
         key=metric
     )
+    
+    # Check if the node is empty or has no valid data
+    if filtered_node.count() == 0 or filtered_node.toDF().schema == "root":
+        print(f"Skipping metric type: {metric} because it has no data")
+        continue
 
     schema = get_glue_schema(database_name=DATABASE_NAME, table_name=metric)
     cols = schema.keys()
     exclusion = ["year_month", "timestamp", "container_id"]
     cols = [item for item in cols if item not in exclusion]
-
+    
     metric_node = create_metric_node(node=filtered_node, columns=cols)
     metric_node = awsglue_transforms.DropFields.apply(
         frame=metric_node,
         paths=["message"]
     )
-    
+
     metric_node = map_data_types(node=metric_node, schema=schema)
 
     glueContext.write_dynamic_frame.from_options(

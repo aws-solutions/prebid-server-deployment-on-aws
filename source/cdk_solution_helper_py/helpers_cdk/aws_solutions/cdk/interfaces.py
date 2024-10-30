@@ -88,7 +88,7 @@ class TemplateOptions:
                 ],
                 "ParameterLabels": {
                     parameter.name: {"default": parameter.label}
-                    for parameter in self._parameters
+                    for parameter in self._parameters if parameter.label
                 },
             },
             "aws:solutions:templatename": self.filename,

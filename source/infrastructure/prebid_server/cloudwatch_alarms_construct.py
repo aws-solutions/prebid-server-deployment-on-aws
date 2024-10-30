@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
-
+from typing import Optional
 from aws_cdk import CfnResource
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_efs as efs
@@ -19,9 +19,9 @@ class CloudwatchAlarms(Construct):
         application_load_balancer: elbv2.ApplicationLoadBalancer,
         efs_file_system: efs.FileSystem,
         vpc: ec2.Vpc,
-        cloudfront_distribution: cloudfront.Distribution,
-        waf_webacl_name: str,
         glue_job_name: str,
+        cloudfront_distribution: Optional[cloudfront.Distribution] = None,
+        waf_webacl_name: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(scope, id, **kwargs)
@@ -35,10 +35,14 @@ class CloudwatchAlarms(Construct):
 
         self._create_ecs_alarms()
         self._create_alb_alarms()
-        self._create_cloudfront_alarms()
+
+        if cloudfront_distribution:
+            self._create_cloudfront_alarms()
+        if waf_webacl_name:
+            self._create_waf_alarms()
+
         self._create_efs_alarms()
         self._create_nat_alarms()
-        self._create_waf_alarms()
         self._create_glue_alarms()
 
     @staticmethod

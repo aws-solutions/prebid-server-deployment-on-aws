@@ -29,7 +29,7 @@ def test_on_create_or_update(mock_upload_file, _):
             "test_key" : "test_value"
             }
         }
-    
+
     on_create_or_update(test_event, None)
     mock_upload_file.assert_called_once_with(
         {"test_key": "test_value"}

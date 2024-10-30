@@ -23,7 +23,6 @@ except ImportError:
 logger = Logger(utc=True, service="efs-cleanup-lambda")
 
 EFS_MOUNT_PATH = os.environ["EFS_MOUNT_PATH"]
-LOGS_TASK_ARN = os.environ["LOGS_TASK_ARN"]
 METRICS_TASK_ARN = os.environ["METRICS_TASK_ARN"]
 METRICS_NAMESPACE = os.environ['METRICS_NAMESPACE']
 RESOURCE_PREFIX = os.environ['RESOURCE_PREFIX']
@@ -33,7 +32,6 @@ EFS_METRICS = os.environ["EFS_METRICS"]
 EFS_LOGS = os.environ["EFS_LOGS"]
 
 DIRECTORY_MAP = {
-    LOGS_TASK_ARN: EFS_LOGS,
     METRICS_TASK_ARN: EFS_METRICS
 }
 SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]

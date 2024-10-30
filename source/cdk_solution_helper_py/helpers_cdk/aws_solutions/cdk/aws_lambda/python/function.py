@@ -158,7 +158,7 @@ class SolutionsPythonFunction(Function):
         :param name: The name of the role. The final name will be "{name}-Role"
         :return: aws_cdk.aws_iam.Role
         """
-        return iam.Role(
+        role = iam.Role(
             self.scope,
             f"{self.construct_id}-Role",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -179,3 +179,6 @@ class SolutionsPythonFunction(Function):
                 )
             },
         )
+        role_l1_construct = role.node.find_child(id='Resource')
+        role_l1_construct.add_metadata('guard', {'SuppressedRules': ['IAM_NO_INLINE_POLICY_CHECK']})
+        return role

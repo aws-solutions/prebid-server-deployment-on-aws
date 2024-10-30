@@ -14,7 +14,6 @@ from aws_cdk import (
     aws_lambda,
     aws_events as events,
     aws_events_targets as targets,
-    aws_kms as kms,
     aws_logs,
 )
 from aws_cdk.aws_lambda import LayerVersion, Code, Runtime
@@ -24,10 +23,12 @@ from aws_lambda_layers.aws_solutions.layer import SolutionsLayer
 import prebid_server.stack_constants as globals
 from aws_solutions.cdk.aws_lambda.python.function import SolutionsPythonFunction
 from aws_solutions.cdk.aws_lambda.layers.aws_lambda_powertools import PowertoolsLayer
+from .prebid_glue_constructs import S3Location
 
 DATASYNC_SERVICE_PRINCIPAL = iam.ServicePrincipal("datasync.amazonaws.com")
 S3_READ_ACTIONS = ["s3:GetObject", "s3:ListBucket"]
 ACCOUNT_ID_CONDITION = {"StringEquals": {globals.RESOURCE_NAMESPACE: [Aws.ACCOUNT_ID]}}
+PUT_OBJECT_ACTION = "s3:PutObject"
 
 # This policy is required to deploy a VPC Lambda
 # https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html#vpc-permissions
@@ -44,13 +45,13 @@ VPC_NW_INTERFACE_POLICY_STATEMENT = iam.PolicyStatement(
 
 class EfsLocation(Construct):
     def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        prebid_vpc: ec2.Vpc,
-        efs_filesystem: efs.FileSystem,
-        efs_path: str,
-        efs_ap: efs.AccessPoint,
+            self,
+            scope: Construct,
+            id: str,
+            prebid_vpc: ec2.Vpc,
+            efs_filesystem: efs.FileSystem,
+            efs_path: str,
+            efs_ap: efs.AccessPoint,
     ):
         super().__init__(scope, id)
 
@@ -89,7 +90,7 @@ class EfsLocation(Construct):
         datasync_efs_role.attach_inline_policy(datasync_efs_policy)
 
         datasync_efs_sec_group = ec2.SecurityGroup(
-            self, "SecurityGroup", vpc=self.prebid_vpc
+            self, "SecurityGroup", vpc=self.prebid_vpc, allow_all_outbound=False
         )
         datasync_efs_sec_group.connections.allow_from(
             self.efs_filesystem, ec2.Port.tcp(globals.EFS_PORT)
@@ -123,103 +124,17 @@ class EfsLocation(Construct):
         return datasync_efs_location
 
 
-class S3Location(Construct):
-    def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        s3_bucket: s3.Bucket,
-    ):
-        super().__init__(scope, id)
-
-        self.s3_bucket = s3_bucket
-        self.S3_PERMISSIONS = [
-            "s3:GetBucketLocation",
-            "s3:ListBucketMultipartUploads",
-            "s3:AbortMultipartUpload",
-            "s3:DeleteObject",
-            "s3:ListMultipartUploadParts",
-            "s3:GetObjectTagging",
-            "s3:PutObjectTagging",
-            "s3:PutObject",
-        ]
-        self.S3_PERMISSIONS.extend(S3_READ_ACTIONS)
-
-        self.s3_location = self._create_s3_location()
-
-    def _create_s3_location(self):
-        """
-        This function creates an S3 Location resource used for DataSync Tasks involving S3
-        """
-        # create Datasync role to access S3 bucket
-        datasync_s3_role = iam.Role(
-            self,
-            "Role",
-            assumed_by=DATASYNC_SERVICE_PRINCIPAL,
-        )
-        datasync_s3_policy = iam.Policy(
-            self,
-            "Policy",
-            statements=[
-                iam.PolicyStatement(
-                    actions=self.S3_PERMISSIONS,
-                    resources=[
-                        self.s3_bucket.bucket_arn,
-                        f"{self.s3_bucket.bucket_arn}/*",
-                    ],
-                    conditions=ACCOUNT_ID_CONDITION,
-                ),
-            ],
-        )
-        datasync_s3_role.attach_inline_policy(datasync_s3_policy)
-        self.s3_bucket.encryption_key.grant_encrypt_decrypt(datasync_s3_role)
-        datasync_s3_policy.node.add_dependency(self.s3_bucket)
-
-        # Create bucket policy to grant DataSync access
-        datasync_bucket_policy_statement = iam.PolicyStatement(
-            principals=[iam.ArnPrincipal(datasync_s3_role.role_arn)],
-            actions=self.S3_PERMISSIONS,
-            resources=[
-                self.s3_bucket.bucket_arn,
-                f"{self.s3_bucket.bucket_arn}/*",
-            ],
-            conditions=ACCOUNT_ID_CONDITION,
-        )
-        bucket_policy = s3.BucketPolicy(
-            self,
-            "BucketPolicy",
-            bucket=self.s3_bucket,
-            removal_policy=RemovalPolicy.RETAIN,
-        )
-        bucket_policy.document.add_statements(datasync_bucket_policy_statement)
-        bucket_policy.node.add_dependency(self.s3_bucket)
-
-        # Create DataSync S3 location
-        datasync_s3_location = datasync.CfnLocationS3(
-            self,
-            "Location",
-            s3_bucket_arn=self.s3_bucket.bucket_arn,
-            s3_config=datasync.CfnLocationS3.S3ConfigProperty(
-                bucket_access_role_arn=datasync_s3_role.role_arn
-            ),
-        )
-        datasync_s3_location.node.add_dependency(self.s3_bucket)
-        datasync_s3_location.node.add_dependency(bucket_policy)
-
-        return datasync_s3_location
-
-
 class EfsCleanup(Construct):
     def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        vpc: ec2.Vpc,
-        efs_ap: efs.AccessPoint,
-        efs_filesystem: efs.FileSystem,
-        report_bucket: s3.Bucket,
-        datasync_tasks: dict[str, datasync.CfnTask],
-        fargate_cluster_arn: str,
+            self,
+            scope: Construct,
+            id: str,
+            vpc: ec2.Vpc,
+            efs_ap: efs.AccessPoint,
+            efs_filesystem: efs.FileSystem,
+            report_bucket: s3.Bucket,
+            datasync_tasks: dict[str, datasync.CfnTask],
+            fargate_cluster_arn: str,
     ):
         super().__init__(scope, id)
 
@@ -259,14 +174,19 @@ class EfsCleanup(Construct):
         """
         This function creates a security group needed for the VPC Lambda to access the EFS filesystem
         """
-        lambda_security_group = ec2.SecurityGroup(self, "SecurityGroup", vpc=self.vpc)
+        lambda_security_group = ec2.SecurityGroup(self, "SecurityGroup", vpc=self.vpc, allow_all_outbound=True) # NOSONAR
         lambda_security_group.connections.allow_from(
             self.efs_filesystem, ec2.Port.tcp(globals.EFS_PORT)
         )
-        lambda_security_group.connections.allow_to(
-            self.efs_filesystem, ec2.Port.tcp(globals.EFS_PORT)
-        )
-
+        # Suppress cfn_guard warning about open egress.
+        # Justification:
+        # The EfsCleanup construct creates Lambda functions that send metrics to
+        # Cloudwatch using a boto3 client. The Cloudwatch endpoint is region-specific,
+        # so this security group need to allow all outbound traffic. Furthermore,
+        # the EfsCleanup cleanup lies within our trust domain. We trust outbound
+        # traffic from that service.
+        security_group_l1_construct = lambda_security_group.node.find_child(id="Resource")
+        security_group_l1_construct.add_metadata("guard", {'SuppressedRules': ['EC2_SECURITY_GROUP_EGRESS_OPEN_TO_WORLD_RULE', 'SECURITY_GROUP_EGRESS_ALL_PROTOCOLS_RULE']})
         return lambda_security_group
 
     def _create_container_stop_logs_lambda_function(self):
@@ -329,6 +249,10 @@ class EfsCleanup(Construct):
         container_lambda_function.role.attach_inline_policy(
             container_lambda_function_policy
         )
+        # Suppress the cfn_guard rule indicating that this function have reserved concurrency.
+        # Reserved concurrency is not necessary because this function is invoked infrequently.
+        container_lambda_function.node.find_child(id='Resource').add_metadata("guard", {
+            'SuppressedRules': ['LAMBDA_CONCURRENCY_CHECK']})
 
         return container_lambda_function
 
@@ -359,7 +283,6 @@ class EfsCleanup(Construct):
                 "SOLUTION_ID": self.node.try_get_context("SOLUTION_ID"),
                 "SOLUTION_VERSION": self.node.try_get_context("SOLUTION_VERSION"),
                 "EFS_MOUNT_PATH": globals.EFS_MOUNT_PATH,
-                "LOGS_TASK_ARN": self.datasync_tasks["logs"].attr_task_arn,
                 "METRICS_TASK_ARN": self.datasync_tasks["metrics"].attr_task_arn,
                 "RESOURCE_PREFIX": Aws.STACK_NAME,
                 "METRICS_NAMESPACE": self.node.try_get_context("METRICS_NAMESPACE"),
@@ -373,6 +296,10 @@ class EfsCleanup(Construct):
                 mount_path=globals.EFS_MOUNT_PATH,
             ),
         )
+        # Suppress the cfn_guard rule indicating that this function should have reserved concurrency.
+        # Reserved concurrency is not necessary because this function is invoked infrequently.
+        lambda_function.node.find_child(id='Resource').add_metadata("guard",
+                                                                    {'SuppressedRules': ['LAMBDA_CONCURRENCY_CHECK']})
 
         # Create cleanup lambda iam policy permissions
         lambda_policy = iam.Policy(
@@ -495,7 +422,7 @@ class EfsCleanup(Construct):
                     statements=[
                         iam.PolicyStatement(
                             actions=["ec2:DeleteNetworkInterface"],
-                            resources=["*"], #NOSONAR
+                            resources=["*"],  # NOSONAR
                             conditions={
                                 "StringEquals": {"ec2:Vpc": f"{self.vpc.vpc_arn}"}
                             },
@@ -505,7 +432,7 @@ class EfsCleanup(Construct):
                                 "ec2:DescribeNetworkInterfaces",
                                 "ec2:DetachNetworkInterface",
                             ],
-                            resources=["*"], #NOSONAR
+                            resources=["*"],  # NOSONAR
                             conditions={
                                 "StringEquals": {
                                     globals.RESOURCE_NAMESPACE: [Aws.ACCOUNT_ID]
@@ -516,6 +443,9 @@ class EfsCleanup(Construct):
                 ),
             },
         )
+        role_l1_construct = custom_resource_role.node.find_child(id='Resource')
+        role_l1_construct.add_metadata('guard', {
+            'SuppressedRules': ['IAM_NO_INLINE_POLICY_CHECK', 'IAM_POLICYDOCUMENT_NO_WILDCARD_RESOURCE']})
 
         self.del_vpc_eni_function = SolutionsPythonFunction(
             self,
@@ -533,6 +463,11 @@ class EfsCleanup(Construct):
                 "SOLUTION_VERSION": self.node.try_get_context("SOLUTION_VERSION"),
             },
         )
+        # Suppress the cfn_guard rules indicating that this function should operate within a VPC and have reserved concurrency.
+        # A VPC is not necessary for this function because it does not need to access any resources within a VPC.
+        # Reserved concurrency is not necessary because this function is invoked infrequently.
+        self.del_vpc_eni_function.node.find_child(id='Resource').add_metadata("guard", {
+            'SuppressedRules': ['LAMBDA_INSIDE_VPC', 'LAMBDA_CONCURRENCY_CHECK']})
 
         del_vpc_eni_custom_resource = CustomResource(
             self,
@@ -570,7 +505,7 @@ class TaskReport(Construct):
             "Policy",
             statements=[
                 iam.PolicyStatement(
-                    actions=["s3:PutObject", "s3:ListBucket"],
+                    actions=[PUT_OBJECT_ACTION, "s3:ListBucket"],
                     resources=[self.bucket.bucket_arn, f"{self.bucket.bucket_arn}/*"],
                     conditions=ACCOUNT_ID_CONDITION,
                 )
@@ -608,17 +543,19 @@ class DataSyncTask(Construct):
     """
 
     def __init__(
-        self,
-        scope: Construct,
-        id: str,
-        vpc: ec2.Vpc,
-        efs_filesystem: efs.FileSystem,
-        efs_ap: efs.AccessPoint,
-        efs_path: str,
-        filter_pattern: str,
-        report_bucket: s3.Bucket,
-        task_schedule: str,
-        log_group: aws_logs.LogGroup,
+            self,
+            scope: Construct,
+            id: str,
+            vpc: ec2.Vpc,
+            efs_filesystem: efs.FileSystem,
+            efs_ap: efs.AccessPoint,
+            efs_path: str,
+            filter_pattern: str,
+            report_bucket: s3.Bucket,
+            task_schedule: str,
+            log_group: aws_logs.LogGroup,
+            glue_etl_job_trigger: aws_lambda.Function,
+            glue_etl_s3_location: S3Location,
     ):
         super().__init__(scope, id)
 
@@ -631,55 +568,8 @@ class DataSyncTask(Construct):
         self.report_bucket = report_bucket
         self.task_schedule = task_schedule
         self.log_group = log_group
-
-        # We initiate this class twice. Once for the Logs Task and again for the Metrics Task,
-        # creating the following resources for each Task:
-        datasync_logs_bucket_key = kms.Key(
-            self,
-            id="BucketKey",
-            description=f"{self.id} Bucket Key",
-            enable_key_rotation=True,
-            pending_window=Duration.days(30),
-            removal_policy=RemovalPolicy.RETAIN,
-        )
-        kms_bucket_policy = iam.PolicyStatement(
-            sid=f"Allow access to {self.id}Bucket",
-            principals=[
-                iam.ServicePrincipal("s3.amazonaws.com"),
-                iam.ServicePrincipal("datasync.amazonaws.com"),
-                iam.ServicePrincipal("glue.amazonaws.com"),
-            ],
-            effect=iam.Effect.ALLOW,
-            actions=[
-                "kms:Encrypt",
-                "kms:Decrypt",
-                "kms:ReEncrypt*",
-                "kms:GenerateDataKey*",
-                "kms:CreateGrant",
-                "kms:DescribeKey",
-            ],
-            resources=["*"],
-            conditions={
-                "StringEquals": {
-                    "aws:SourceAccount": [f"{Aws.ACCOUNT_ID}"],
-                }
-            },
-        )
-        datasync_logs_bucket_key.add_to_resource_policy(kms_bucket_policy)
-
-        self.bucket = s3.Bucket(
-            self,
-            "Bucket",
-            object_ownership=s3.ObjectOwnership.OBJECT_WRITER,
-            access_control=s3.BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            encryption_key=datasync_logs_bucket_key,
-            removal_policy=RemovalPolicy.RETAIN,
-            versioned=True,
-            enforce_ssl=True,
-            object_lock_enabled=True,
-        )
-        self.bucket.node.add_dependency(datasync_logs_bucket_key)
+        self.glue_etl_job_trigger = glue_etl_job_trigger
+        self.s3_location = glue_etl_s3_location
 
         self.efs_location = EfsLocation(
             self,
@@ -689,9 +579,6 @@ class DataSyncTask(Construct):
             efs_path=self.efs_path,
             efs_ap=self.efs_ap,
         )
-
-        self.s3_location = S3Location(self, "S3Location", s3_bucket=self.bucket)
-        self.s3_location.node.add_dependency(self.bucket)
 
         self.task_report = TaskReport(self, "TaskReport", s3_bucket=self.report_bucket)
         self.task_report.node.add_dependency(self.report_bucket)
@@ -719,10 +606,30 @@ class DataSyncTask(Construct):
             cloud_watch_log_group_arn=self.log_group.log_group_arn,
         )
         self.task.node.add_dependency(self.log_group)
-        self.task.node.add_dependency(self.bucket)
         self.task.node.add_dependency(self.report_bucket)
         self.task.node.add_dependency(self.s3_location)
         self.task.node.add_dependency(self.task_report)
+
+        # Create EventBridge rule to trigger metrics etl lambda on successful datasync executions of metrics
+        rule = events.Rule(
+            self,
+            "EventBridgeRule",
+            event_pattern=events.EventPattern(
+                source=["aws.datasync"],
+                detail_type=["DataSync Task Execution State Change"],
+                resources=[
+                    ""
+                ],
+                # due to a cdk limitation, this is left empty and replaced with the override below (https://github.com/aws/aws-cdk/issues/28462)
+                detail={"State": ["SUCCESS"]},
+            ),
+        )
+        rule.node.default_child.add_property_override(
+            "EventPattern.resources",
+            [{"wildcard": f"{self.task.attr_task_arn}/execution/*"}],
+        )
+        rule.node.add_dependency(self.task)
+        rule.add_target(targets.LambdaFunction(self.glue_etl_job_trigger))
 
 
 class DataSyncMonitoring(Construct):
@@ -739,6 +646,14 @@ class DataSyncMonitoring(Construct):
         # explicitly grants the service access (it does not have permission by default).
         # https://docs.aws.amazon.com/datasync/latest/userguide/monitor-datasync.html#configure-logging
         log_group = aws_logs.LogGroup(self, "LogGroup")
+        # Suppress cfn_guard rule for CloudWatch log encryption since they are
+        # encrypted by default.
+        log_group_l1_construct = log_group.node.find_child(id="Resource")
+        log_group_l1_construct.add_metadata(
+            "guard", {
+                'SuppressedRules': ['CLOUDWATCH_LOG_GROUP_ENCRYPTED']
+            }
+        )
         aws_logs.ResourcePolicy(
             self,
             "ResourcePolicy",

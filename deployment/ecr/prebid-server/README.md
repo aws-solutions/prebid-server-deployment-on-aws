@@ -8,9 +8,11 @@
 * Build prebid-server image.
   `docker build -t prebid-server .`
 * Run prebid-server image: 
- `docker run -v ./:/mnt/efs -p 8080:8080 prebid-server`
+ `docker run -v ./:/mnt/efs -v ~/.aws:/root/.aws -p 8080:8080 prebid-server`
 * View prebid server log:  
   `tail -f ./logs/prebid-server.log`
+* Check server to verify status `200 OK`, `{"application":{"status":"ok"}}`:
+  `curl -i http://localhost:8080/status`
 
 
 ### Docker Config

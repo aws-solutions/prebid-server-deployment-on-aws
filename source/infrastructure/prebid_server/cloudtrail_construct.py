@@ -18,7 +18,6 @@ class CloudTrailConstruct(Construct):
         scope,
         id,
         s3_buckets,
-        lambda_functions,
     ) -> None:
         """
         This construct creates a CloudTrail resource and sets S3 and Lambda Data Events.
@@ -26,7 +25,6 @@ class CloudTrailConstruct(Construct):
         super().__init__(scope, id)
 
         self.s3_buckets = s3_buckets
-        self.lambda_functions = lambda_functions
         self.logging_bucket = self._create_logging_bucket()
 
         self.trail = cloud_trail.Trail(
@@ -41,8 +39,6 @@ class CloudTrailConstruct(Construct):
         self.trail.add_s3_event_selector(
             [cloud_trail.S3EventSelector(bucket=bucket) for bucket in self.s3_buckets]
         )
-
-        self.trail.add_lambda_event_selector(self.lambda_functions)
 
         self.trail.node.add_dependency(self.logging_bucket)
 
@@ -91,7 +87,21 @@ class CloudTrailConstruct(Construct):
             versioned=True,
             enforce_ssl=True,
             object_lock_enabled=True,
+            server_access_logs_prefix="access-logs/"
         )
         logging_bucket.node.add_dependency(logging_bucket_key)
+        enable_s3_access_logs_statement = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            principals=[
+                iam.ServicePrincipal("logging.s3.amazonaws.com")
+            ],
+            actions=["s3:PutObject"],
+            resources=[
+                f"{logging_bucket.bucket_arn}/access-logs/*"
+            ]
+        )
+        logging_bucket.add_to_resource_policy(
+            enable_s3_access_logs_statement
+        )
 
         return logging_bucket
