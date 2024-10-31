@@ -1,6 +1,7 @@
+
 # Prebid Server Deployment on AWS
 
-This solution deploys v2.12.0 of [Prebid Server Java](https://github.com/prebid/prebid-server-java.git) with infrastructure in a single region of the AWS Cloud to handle a wide range of request traffic, and recording of auction and bid transaction data.
+This solution deploys v3.13.0 of [Prebid Server Java](https://github.com/prebid/prebid-server-java.git) with infrastructure in a single region of the AWS Cloud to handle a wide range of request traffic, and recording of auction and bid transaction data.
 
 ## Architecture 
 
@@ -60,6 +61,13 @@ sh ../deployment/run-unit-tests.sh --in-venv 1
 
 ### 3. Build the solution for deployment
 
+#### Prebid Server Container Image
+By default, the Prebid Server container image will be built locally using Docker ([README](deployment/ecr/prebid-server/README.md)). If you prefer to use a remote image (from ECR or Docker Hub), set the following environment variable with your fully qualified image name before building the template:
+
+```bash
+export OVERRIDE_ECR_REGISTRY=your-fully-qualified-image-name
+```
+
 #### Using AWS CDK (recommended) 
 Packaging and deploying the solution with the AWS CDK allows for the most flexibility in development
 ```bash 
@@ -90,6 +98,7 @@ export DIST_BUCKET_PREFIX=my-bucket-name
 export SOLUTION_NAME=my-solution-name  
 export VERSION=my-version  
 export REGION_NAME=my-region
+export OVERRIDE_ECR_REGISTRY=my-ecr-registry
 
 build-s3-cdk-dist deploy \
   --source-bucket-name $DIST_BUCKET_PREFIX \
@@ -108,6 +117,7 @@ build-s3-cdk-dist deploy \
 - `$SOLUTION_NAME` - The name of This solution (example: solution-customization)
 - `$VERSION` - The version number to use (example: v0.0.1)
 - `$REGION_NAME` - The region name to use (example: us-east-1)
+- `$OVERRIDE_ECR_REGISTRY` - The ecr-registry to use (example: public.ecr.aws/abc12345/prebid-server:latest)
 
 This will result in all global assets being pushed to the `DIST_BUCKET_PREFIX`, and all regional assets being pushed to 
 `DIST_BUCKET_PREFIX-<REGION_NAME>`. If your `REGION_NAME` is us-east-1, and the `DIST_BUCKET_PREFIX` is
@@ -122,19 +132,24 @@ After running the command, you can deploy the template:
 
 > **Note:** You can drop `--sync` from the command to only perform the build and synthesis of the template without uploading to a remote location. This is helpful when testing new changes to the code.
 
-#### Build prebid-server docker locally
-* [Docker README.md](deployment/ecr/prebid-server/README.md)
-
 ## Prebid Server Java Container Customization
 
 You may choose to customize the container configuration, or create your own container to use with this solution. The infrastructure for this solution has only been tested on Prebid Server Java.
 
+#### Deploy with Customized Prebid Server Configurations
+* After deploying the CloudFormation template stack, find the S3 bucket in the CloudFormation stack outputs named `ContainerImagePrebidSolutionConfigBucket`.
+1. Review the `/prebid-server/default/README.md` and `/prebid-server/current/README.md` files in the bucket.
+2. Upload your changes to the `/prebid-server/current/` prefix in that bucket.
+3. To update the ECS service manually, navigate to the Amazon ECS cluster associated with the deployed CloudFormation stack using the AWS Management Console. Then, update the ECS service by selecting the 'Force New Deployment' option with the new task definition version, as described in the official AWS documentation for updating an ECS service via the console. [ref](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/update-service-console-v2.html).[ref](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/update-service-console-v2.html).
+
 ### Runtime and Metric Logging for ETL
+
+The Prebid Server container shipped with this solution is configured for two types of logging.
+
+Runtime logs from the Prebid Server are sent to CloudWatch logs under the `PrebidContainerLogGroup` log group. This log group collects runtime logs for all containers and includes the container ID from ECS. Container logs are available to use with CloudWatch Log Insights and Live Tailing.
 
 Review the file named `deployment/ecr/prebid-server/prebid-logging.xml` for the required locations of log file output. Resources outside of the containers instances, including Lambda Functions and AWS DataSync jobs, expect to find log files at the following locations.
 
-* `/mnt/efs/logs/CONTAINER_ID/prebid-server.log` is where the current stdout/stderr output log is written.
-* `/mnt/efs/logs/CONTAINER_ID/archived/prebid-server.TIMESTAMP.log.gz` is where logs are rotated on a schedule. This location is scanned by AWS DataSync periodically to migrate logs from EFS to S3 for the long-term storage. Rotated logs are removed from EFS after migration to S3.
 * `/mnt/efs/metrics/CONTAINER_ID/prebid-metrics.log` is where the current metrics output log is written. The default interval for outputting metrics to this file is 30 seconds.
 * `/mnt/efs/metrics/CONTAINER_ID/archived/prebid-metrics.TIMESTAMP.log.gz`is where logs are rotated on a schedule. This location is scanned by AWS DataSync periodically to migrate logs from EFS to S3 for the ETL process to AWS Glue Catalog. Rotated logs are removed from EFS after migration to S3.
 
@@ -153,7 +168,7 @@ If you'd like to use a different container:
 * Build and host the solution assets for installation in your account using the process described above
 * Change to the `deployment/global-s3-assets` folder on the build workstation
 * Open the file `prebid-server-deployment-on-aws.template` in an editor
-* Find the line in the template under the Task Definition resource that is `"Image": "public.ecr.aws/aws-solutions/prebid-server:v1.0.2",`
+* Find the line in the template under the Task Definition resource that is `"Image": "public.ecr.aws/aws-solutions/prebid-server:v1.1.0",`
 * Update the Image property value with your container image URI
 * Create the stack by uploading the changed template to the CloudFormation console
 

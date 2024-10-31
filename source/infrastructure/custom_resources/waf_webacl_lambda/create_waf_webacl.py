@@ -6,12 +6,17 @@ This module is a custom lambda for creation of Waf Web ACL
 """
 
 import boto3
+import os
+import uuid
+from botocore import config
 from aws_lambda_powertools import Logger
 from crhelper import CfnResource
 
-
 logger = Logger(utc=True, service="waf-custom-lambda")
 helper = CfnResource(log_level="ERROR", boto_level="ERROR")
+
+SOLUTION_ID = os.environ["SOLUTION_ID"]
+SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
 
 
 def event_handler(event, context):
@@ -23,15 +28,24 @@ def event_handler(event, context):
     helper(event, context)
 
 
+def get_4char_uuid():
+    unique_id = str(uuid.uuid4())
+    return unique_id[:4]
+
+
 @helper.create
 def on_create(event, _) -> None:
     """
     Function to create waf web acl
     """
-
-    wafv2_client = boto3.client("wafv2", region_name="us-east-1")
+    # Add the solution identifier to boto3 requests for attributing service API usage
+    boto_config = {
+        "region_name": "us-east-1",
+        "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+    }
+    wafv2_client = boto3.client("wafv2", config=config.Config(**boto_config))
     response = wafv2_client.create_web_acl(
-        Name=f"PrebidWaf-{event['StackId'].rsplit('/')[-1]}",
+        Name=f"PrebidWaf-{event['StackId'].rsplit('/')[-1]}-{get_4char_uuid()}",
         Scope="CLOUDFRONT",
         DefaultAction={"Allow": {}},
         Description="Creating Web ACL for Cloudfront applying AWS managed rule sets",

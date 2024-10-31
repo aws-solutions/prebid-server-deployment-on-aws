@@ -5,13 +5,17 @@
 This module is a custom lambda for deleting VPC ENIs for the Lambda service
 """
 
+import os
 import boto3
+from botocore import config
 from aws_lambda_powertools import Logger
 from crhelper import CfnResource
 
 logger = Logger(utc=True, service="vpc-eni-lambda")
 helper = CfnResource(log_level="ERROR", boto_level="ERROR")
 
+SOLUTION_ID = os.environ["SOLUTION_ID"]
+SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
 
 def event_handler(event, context):
     """
@@ -27,8 +31,11 @@ def on_delete(event, _) -> None:
     Function to delete Lambda service VPC ENIs
     """
     SECURITY_GROUP_ID = event["ResourceProperties"]["SECURITY_GROUP_ID"]
-
-    ec2_client = boto3.client("ec2")
+    # Add the solution identifier to boto3 requests for attributing service API usage
+    boto_config = {
+        "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+    }
+    ec2_client = boto3.client("ec2", config=config.Config(**boto_config))
 
     desribe_response = ec2_client.describe_network_interfaces(
         Filters=[{"Name": "group-id", "Values": [SECURITY_GROUP_ID]}]

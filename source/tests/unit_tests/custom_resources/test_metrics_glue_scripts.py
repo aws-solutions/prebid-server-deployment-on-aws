@@ -35,6 +35,8 @@ mock_imports = [
 class FakeImportClass(FakeClass):
     def getResolvedOptions(self, _, **k):
         return {
+            "SOLUTION_ID": "solution-id",
+            "SOLUTION_VERSION": "solution-version",
             "JOB_NAME": "job-name",
             "SOURCE_BUCKET": "source-bucket",
             "OUTPUT_BUCKET": "output-bucket",

@@ -37,21 +37,22 @@ def event_handler(event, _):
     ).put_metrics_count_value_1(metric_name="ConatinerStopLogs")
 
     detail = event["detail"]
-    container_run_id = detail["containers"][0]["runtimeId"]
+    container_run_id = detail["containers"][0]["runtimeId"].split('-')[0]
     logger.info(f"Container run id {container_run_id} status {detail['lastStatus']}")
 
     efs_mount_path = Path(EFS_MOUNT_PATH)
     metrics_log_folder = efs_mount_path.joinpath(EFS_METRICS).joinpath(container_run_id)
     compress_log_file(metrics_log_folder, "prebid-metrics.log")
 
-    runtime_log_folder = efs_mount_path.joinpath(EFS_LOGS).joinpath(container_run_id)
-    compress_log_file(runtime_log_folder, "prebid-server.log")
-
 
 def compress_log_file(log_folder_path: Path, log_file_name: str):
     archived_folder = create_or_retreive_archived_folder(log_folder_path)
 
     log_file_path = log_folder_path / log_file_name
+    if not log_file_path.exists():
+        logger.warning(f"{log_file_path} does not exist")
+        return
+
     utc_time = datetime.now(timezone.utc)
     file_to_compress = (
         archived_folder
@@ -68,7 +69,7 @@ def create_or_retreive_archived_folder(log_folder_path) -> Path:
     archived_folder = Path(log_folder_path).joinpath("archived")
     try:
         # only create if folder does not exist
-        archived_folder.mkdir(exist_ok=True)
+        archived_folder.mkdir(exist_ok=True, parents=True)
     except PermissionError as p:
         logger.error(f"Permission error: {p}")
         raise p

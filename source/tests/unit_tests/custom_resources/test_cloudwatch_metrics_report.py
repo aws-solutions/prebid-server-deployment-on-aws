@@ -282,7 +282,7 @@ def test_send_metrics(_, mock_response_put, event, context):
                     "Solution": os.environ["SOLUTION_ID"],
                     "Version": os.environ["SOLUTION_VERSION"],
                     "UUID": secret_uuid,
-                    "TimestampUTC": dt_utc_now.strftime(DT_TIME_FORMAT),
+                    "Timestamp": dt_utc_now.strftime(DT_TIME_FORMAT),
                     "Data": test_metric_sum,
                     "StartTime": (dt_utc_now - timedelta(seconds=86400)).strftime(DT_TIME_FORMAT),
                     "EndTime": dt_utc_now.strftime(DT_TIME_FORMAT),
@@ -300,7 +300,7 @@ def test_send_metrics(_, mock_response_put, event, context):
     with patch("custom_resources.cloudwatch_metrics.cloudwatch_metrics_report.datetime", fake_date) as mock_dt_now:
         from custom_resources.cloudwatch_metrics.cloudwatch_metrics_report import send_metrics, CloudwatchMetricsReport
 
-        send_metrics(event, context)
+        send_metrics()
 
         mock_dt_now.utcnow.assert_called()
 
@@ -308,7 +308,7 @@ def test_send_metrics(_, mock_response_put, event, context):
             for k, v in data["Data"].items():
                 assert test_metric_sum[k] == v
 
-        cloudwatch_metrics_report = CloudwatchMetricsReport(event=event, context=context)
+        cloudwatch_metrics_report = CloudwatchMetricsReport()
         for metric_func in [
             "get_lambda_metrics",
             "get_cloudfront_metrics",

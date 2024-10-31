@@ -11,12 +11,10 @@ import os
 
 from unittest.mock import patch
 
-LOGS_TASK_ARN = "arn:aws:sync:us-west-2:9111122223333:task/task-example1"
 METRICS_TASK_ARN = "arn:aws:sync:us-west-2:9111122223333:task/task-example2"
 
 test_environ = {
     "EFS_MOUNT_PATH": "mnt/efs",
-    "LOGS_TASK_ARN": LOGS_TASK_ARN,
     "METRICS_TASK_ARN": METRICS_TASK_ARN,
     "DATASYNC_REPORT_BUCKET": "test-report-bucket",
     "AWS_ACCOUNT_ID": "9111122223333",
@@ -44,14 +42,6 @@ def test_event_handler(
     from prebid_server.efs_cleanup_lambda.delete_efs_files import event_handler
 
     mock_metrics.return_value = None
-
-    # test log arn mapping with successful file processing
-    mock_get_transferred_object_keys.return_value = ["key1", "key2"]
-    test_event_1 = {
-        "resources": [f"{LOGS_TASK_ARN}/execution/exec-example316440271f"]
-    }
-    event_handler(test_event_1, None)
-    mock_info.assert_any_call("2 new logs files to process: ['key1', 'key2']")
 
     # test metric arn mapping with no file processing
     mock_get_transferred_object_keys.return_value = []

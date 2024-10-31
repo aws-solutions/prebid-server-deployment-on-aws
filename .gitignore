@@ -73,3 +73,7 @@ source/aws_lambda/shared/util/build/*
 *.tmp
 *.sav
 *.dtmp
+
+# generated files
+source/infrastructure/custom_resources/docker_configs_bucket_lambda/current-config/
+source/infrastructure/custom_resources/docker_configs_bucket_lambda/default-config/

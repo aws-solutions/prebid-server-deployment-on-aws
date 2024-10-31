@@ -187,7 +187,7 @@ def validate_version_code(ctx, param, value):
         return value
     else:
         raise click.BadParameter(
-            "please specifiy major, minor and patch versions, e.g. v1.0.2"
+            "please specifiy major, minor and patch versions, e.g. v1.1.0"
         )
 
 
@@ -235,7 +235,8 @@ def source_code_package(ctx, ignore, solution_name):
         "**/.pytest_cache/*",
         "**/*.egg-info",
         "**/__pycache__",
-        ".crux_template.md"
+        ".crux_template.md",
+        "loadtest"
     ]
     ignored.extend(ignore)
 
@@ -309,6 +310,21 @@ def source_code_package(ctx, ignore, solution_name):
         except FileNotFoundError:
             raise click.ClickException(
                 f"The solution is missing docs/{copy_file}"
+            )
+        
+    # copy the loadtest files
+    (Path(env.open_source_dir) / "source" / "loadtest").mkdir()
+    (Path(env.open_source_dir) / "source" / "loadtest" / "jmx").mkdir()
+
+    for copy_file in ["prebid_server_test_plan.jmx", "README.md", ".gitignore"]:
+        try:
+            shutil.copyfile(
+                Path(env.source_dir) / "loadtest" / "jmx" / copy_file,
+                Path(env.open_source_dir) / "source" / "loadtest" / "jmx" / copy_file,
+            )
+        except FileNotFoundError:
+            raise click.ClickException(
+                f"The solution is missing source/loadtest/jmx/{copy_file}"
             )
 
     shutil.make_archive(

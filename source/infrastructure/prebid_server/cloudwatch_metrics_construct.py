@@ -1,7 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import json
 
 from constructs import Construct
@@ -15,7 +14,6 @@ from aws_cdk import (
 from aws_cdk.aws_iam import Effect, PolicyStatement
 from aws_cdk.aws_events import CfnRule
 from aws_cdk.aws_lambda import CfnPermission
-
 
 import prebid_server.stack_constants as globals
 from aws_lambda_layers.aws_solutions.layer import SolutionsLayer
@@ -71,7 +69,7 @@ class CloudwatchMetricsConstruct(Construct):
         """
         This function is responsible for aggregating and reporting metrics.
         """
-        self._cloudwatch_metrics_function = SolutionsPythonFunction(
+        self.cloudwatch_metrics_function = SolutionsPythonFunction(
             self,
             "CloudwatchMetricsFunction",
             globals.CUSTOM_RESOURCES_PATH
@@ -88,17 +86,20 @@ class CloudwatchMetricsConstruct(Construct):
                 "SOLUTION_ID": self.node.try_get_context("SOLUTION_ID"),
                 "SOLUTION_VERSION": self.node.try_get_context("SOLUTION_VERSION"),
                 "METRICS_NAMESPACE": self.node.try_get_context("METRICS_NAMESPACE"),
-                "CF_DISTRIBUTION_ID": kwargs["cloud_front_id"],
+                "CF_DISTRIBUTION_ID": kwargs.get("cloud_front_id", ""),
                 "SUBNET_IDS": json.dumps(kwargs["public_subnets"]),
                 "LOAD_BALANCER_NAME": kwargs["load_balancer_full_name"],
                 "SEND_ANONYMIZED_DATA": self._send_anonymous_usage_data(),
             },
             layers=[SolutionsLayer.get_or_create(self)],
         )
+        # Suppress the cfn_guard rules indicating that this function should operate within a VPC and have reserved concurrency.
+        # A VPC is not necessary for this function because it does not need to access any resources within a VPC.
+        # Reserved concurrency is not necessary because this function is invoked infrequently.
+        self.cloudwatch_metrics_function.node.find_child(id='Resource').add_metadata("guard", {
+            'SuppressedRules': ['LAMBDA_INSIDE_VPC', 'LAMBDA_CONCURRENCY_CHECK']})
 
-        self.cloudwatch_metrics_lambda_iam_policy.attach_to_role(
-            self._cloudwatch_metrics_function.role
-        )
+        self.cloudwatch_metrics_lambda_iam_policy.attach_to_role(self.cloudwatch_metrics_function.role)
 
     def _create_event_bridge_rule(self):
         send_cloudwatch_metrics_rule = CfnRule(
@@ -109,7 +110,7 @@ class CloudwatchMetricsConstruct(Construct):
             state="ENABLED",
             targets=[
                 CfnRule.TargetProperty(
-                    arn=self._cloudwatch_metrics_function.function_arn,
+                    arn=self.cloudwatch_metrics_function.function_arn,
                     id="send-cloudwatch-metrics",
                 )
             ],
@@ -119,12 +120,10 @@ class CloudwatchMetricsConstruct(Construct):
             self,
             "CloudwatchMetricsPermissions",
             action="lambda:InvokeFunction",
-            function_name=self._cloudwatch_metrics_function.function_arn,
+            function_name=self.cloudwatch_metrics_function.function_arn,
             principal="events.amazonaws.com",
             source_arn=send_cloudwatch_metrics_rule.attr_arn,
         )
 
     def _send_anonymous_usage_data(self) -> str:
-        return os.getenv("SEND_ANONYMIZED_DATA") or Fn.find_in_map(
-            "Solution", "Data", "SendAnonymizedData", default_value="Yes"
-        )
+        return Fn.find_in_map("Solution", "Data", "SendAnonymizedData", default_value="Yes")

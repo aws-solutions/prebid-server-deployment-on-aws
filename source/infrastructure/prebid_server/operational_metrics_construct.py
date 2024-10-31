@@ -86,6 +86,10 @@ class OperationalMetricsConstruct(Construct):
                 PowertoolsLayer.get_or_create(self),
             ],
         )
+        # Suppress the cfn_guard rules indicating that this function should operate within a VPC and have reserved concurrency.
+        # A VPC is not necessary for this function because it does not need to access any resources within a VPC.
+        # Reserved concurrency is not necessary because this function is invoked infrequently.
+        self._operational_metrics_lambda.node.find_child(id='Resource').add_metadata("guard", {'SuppressedRules': ['LAMBDA_INSIDE_VPC', 'LAMBDA_CONCURRENCY_CHECK']})
 
         SolutionsLambdaFunctionAlarm(
             self,
@@ -97,6 +101,9 @@ class OperationalMetricsConstruct(Construct):
         self.operational_metrics_lambda_iam_policy.attach_to_role(
             self._operational_metrics_lambda.role
         )
+        role_l1_construct = self._operational_metrics_lambda.role.node.find_child(id='Resource')
+        role_l1_construct.add_metadata('guard', {'SuppressedRules': ['IAM_NO_INLINE_POLICY_CHECK']})
+
 
     def _create_operational_metrics_custom_resource(self):
         """

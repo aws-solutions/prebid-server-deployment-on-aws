@@ -18,7 +18,6 @@ import prebid_server.stack_constants as globals
 
 @pytest.fixture(scope="module")
 def mock_solution():
-     
     return CDKSolution(cdk_json_path="../source/infrastructure/cdk.json")
 
 
@@ -28,12 +27,12 @@ def template(mock_solution):
 
     app = cdk.App(context=mock_solution.context.context)
     stack = PrebidServerStack(app, PrebidServerStack.name, description=PrebidServerStack.description,
-                            template_filename=PrebidServerStack.template_filename,
-                            synthesizer=mock_solution.synthesizer)
+                              template_filename=PrebidServerStack.template_filename,
+                              synthesizer=mock_solution.synthesizer)
     yield Template.from_stack(stack)
 
 
-@pytest.mark.run(order=1)
+@pytest.mark.run(order=2)
 def test_prebid_server_template(template):
     mapping_solution(template)
     mapping_source_code(template)
@@ -56,7 +55,6 @@ def test_prebid_server_template(template):
     prebid_efs_security_group(template)
     prebid_efs_access_point(template)
     prebid_task_default_policy(template)
-    prebid_task_definition_task_role_iam_policy(template)
     prebid_elastic_load_balancer(template)
     prebid_public_load_balancing_listener(template)
     prebid_public_load_balancing_target_group(template)
@@ -65,7 +63,6 @@ def test_prebid_server_template(template):
     ecs_util_memory_alarm(template)
     alb5xx_error_alarm(template)
     alb4xx_error_alarm(template)
-    data_sync_logs_task(template)
     data_sync_metrics_bucket_policy(template)
     efs_cleanup_vpc_custom_res(template)
     solution_metrics_anonymous_data(template)
@@ -82,7 +79,7 @@ def mapping_solution(template):
         {
             'Data': {
                 'ID': "SO0248",
-                'Version': "v1.0.2",
+                'Version': "v1.1.0",
                 'SendAnonymizedData': 'Yes'
             }
         }
@@ -95,7 +92,7 @@ def mapping_source_code(template):
         {
             'General': {
                 'S3Bucket': "BUCKET_NAME",
-                'KeyPrefix': 'Prebid Server Deployment on AWS/v1.0.2'
+                'KeyPrefix': 'Prebid Server Deployment on AWS/v1.1.0'
             }
         }
     )
@@ -146,10 +143,10 @@ def metrics_etl_job(template):
             },
             'DefaultArguments': {
                 '--SOURCE_BUCKET': {
-                    'Ref': 'DataSyncMetricsBucket76641540'
+                    'Ref': Match.string_like_regexp("DataSyncMetricsBucket")
                 },
                 '--OUTPUT_BUCKET': {
-                    'Ref': 'MetricsEtlBucket69CB3729'
+                    'Ref': Match.string_like_regexp("MetricsEtlBucket")
                 },
                 '--DATABASE_NAME': {
                     'Fn::Join': [
@@ -197,7 +194,7 @@ def metrics_etl_job(template):
             },
             'Role': {
                 'Fn::GetAtt': [
-                    'MetricsEtlJobRole8990170A',
+                    Match.string_like_regexp("MetricsEtlJobRole"),
                     'Arn'
                 ]
             },
@@ -228,7 +225,7 @@ def create_glue_job_trigger(template):
                                 [
                                     {
                                         "Fn::GetAtt": [
-                                            "DataSyncMetricsTask932C2D80",
+                                            Match.string_like_regexp("DataSyncMetricsTask"),
                                             "TaskArn"
                                         ]
                                     },
@@ -244,7 +241,7 @@ def create_glue_job_trigger(template):
                 {
                     "Arn": {
                         "Fn::GetAtt": [
-                            "MetricsEtlTriggerFunction098DA476",
+                            Match.string_like_regexp("MetricsEtlTriggerFunction"),
                             "Arn"
                         ]
                     },
@@ -365,10 +362,10 @@ def get_prefix_id_function_policy(template):
                 ],
                 'Version': '2012-10-17'
             },
-            'PolicyName': 'GetPrefixIdFunctionPolicyE931DEE0',
+            'PolicyName': Match.string_like_regexp("GetPrefixIdFunctionPolicy"),
             'Roles': [
                 {
-                    'Ref': 'GetPrefixIdFunctionRole29EE98C6'
+                    'Ref': Match.string_like_regexp("GetPrefixIdFunctionRole")
                 }
             ]
         }
@@ -438,7 +435,7 @@ def waf_web_acl_cr(template):
         "AWS::CloudFormation::CustomResource", {
             'ServiceToken': {
                 'Fn::GetAtt': [
-                    'CreateWafWebAclFunctionA6AF6419',
+                    Match.string_like_regexp("CreateWafWebAclFunction"),
                     'Arn'
                 ]
             }
@@ -470,7 +467,7 @@ def waf_web_acl_function_policy(template):
                                     },
                                     ':distribution/',
                                     {
-                                        'Ref': 'PrebidCloudFrontDist4A157CA2'
+                                        'Ref': Match.string_like_regexp("PrebidCloudFrontDist")
                                     }
                                 ]
                             ]
@@ -488,13 +485,13 @@ def waf_web_acl_function_policy(template):
                 ],
                 'Version': '2012-10-17'
             },
-            'PolicyName': 'WafWebAclFunctionCloudFrontPolicyD66D3EFF',
+            'PolicyName': Match.string_like_regexp("WafWebAclFunctionCloudFrontPolicy"),
             'Roles': [
                 {
-                    'Ref': 'CreateWafWebAclFunctionRoleC72F5770'
+                    'Ref': Match.string_like_regexp("CreateWafWebAclFunctionRole")
                 },
                 {
-                    'Ref': 'DelWafWebAclFunctionRole780EE078'
+                    'Ref': Match.string_like_regexp("DelWafWebAclFunctionRole")
                 }
             ]
         }
@@ -560,28 +557,28 @@ def delete_waf_web_acl_custom_res(template):
     template.has_resource_properties("AWS::CloudFormation::CustomResource", {
         'ServiceToken': {
             'Fn::GetAtt': [
-                'DelWafWebAclFunction0DA7C9FD',
+                Match.string_like_regexp("DelWafWebAclFunction"),
                 'Arn'
             ]
         },
         'CF_DISTRIBUTION_ID': {
-            'Ref': 'PrebidCloudFrontDist4A157CA2'
+            'Ref': Match.string_like_regexp("PrebidCloudFrontDist")
         },
         'WAF_WEBACL_NAME': {
             'Fn::GetAtt': [
-                'WafWebAclCr',
+                Match.string_like_regexp("WafWebAclCr"),
                 'webacl_name'
             ]
         },
         'WAF_WEBACL_ID': {
             'Fn::GetAtt': [
-                'WafWebAclCr',
+                Match.string_like_regexp("WafWebAclCr"),
                 'webacl_id'
             ]
         },
         'WAF_WEBACL_LOCKTOKEN': {
             'Fn::GetAtt': [
-                'WafWebAclCr',
+                Match.string_like_regexp("WafWebAclCr"),
                 'webacl_locktoken'
             ]
         }
@@ -598,7 +595,7 @@ def prebid_vpc(template):
             'Tags': [
                 {
                     'Key': 'Name',
-                    'Value': 'prebid-server-deployment-on-aws/PrebidVpc'
+                    'Value': Match.string_like_regexp("PrebidVpc")
                 }
             ]
         }
@@ -610,17 +607,17 @@ def prebid_vpc_nat_gateway(template):
         "AWS::EC2::NatGateway", {
             'AllocationId': {
                 'Fn::GetAtt': [
-                    'PrebidVpcPrebidPublicSubnet1EIP6ED088A6',
+                    Match.string_like_regexp("PrebidVpcPrebidPublicSubnet"),
                     'AllocationId'
                 ]
             },
             'SubnetId': {
-                'Ref': 'PrebidVpcPrebidPublicSubnet1Subnet9285BD8C'
+                'Ref': Match.string_like_regexp("PrebidVpcPrebidPublicSubnet")
             },
             'Tags': [
                 {
                     'Key': 'Name',
-                    'Value': 'prebid-server-deployment-on-aws/PrebidVpc/Prebid-PublicSubnet1'
+                    'Value': Match.string_like_regexp("Prebid-PublicSubnet")
                 }
             ]
         }
@@ -632,10 +629,10 @@ def prebid_vpc_subnet_ec2_route(template):
         "AWS::EC2::Route", {
             'DestinationCidrBlock': '0.0.0.0/0',
             'GatewayId': {
-                'Ref': 'PrebidVpcIGWF477140F'
+                'Ref': Match.string_like_regexp("PrebidVpcIGWF")
             },
             'RouteTableId': {
-                'Ref': 'PrebidVpcPrebidPublicSubnet1RouteTable5CADA5E6'
+                'Ref': Match.string_like_regexp("RouteTable")
             }
         }
     )
@@ -665,11 +662,11 @@ def prebid_vpc_pvt_ec2_subnet(template):
                 },
                 {
                     'Key': 'Name',
-                    'Value': 'prebid-server-deployment-on-aws/PrebidVpc/Prebid-PrivateSubnet1'
+                    'Value': Match.string_like_regexp("Prebid-PrivateSubnet")
                 }
             ],
             'VpcId': {
-                'Ref': 'PrebidVpcD4BD0EC9'
+                'Ref': Match.string_like_regexp("PrebidVpc")
             }
         }
     )
@@ -678,7 +675,7 @@ def prebid_vpc_pvt_ec2_subnet(template):
 def prebid_efs_security_group(template):
     template.has_resource_properties(
         "AWS::EC2::SecurityGroup", {
-            'GroupDescription': 'prebid-server-deployment-on-aws/Prebid-fs/EfsSecurityGroup',
+            'GroupDescription': Match.string_like_regexp("ALB-security-group"),
             'SecurityGroupEgress': [
                 {
                     'CidrIp': '0.0.0.0/0',
@@ -686,14 +683,8 @@ def prebid_efs_security_group(template):
                     'IpProtocol': '-1'
                 }
             ],
-            'Tags': [
-                {
-                    'Key': 'Name',
-                    'Value': 'prebid-server-deployment-on-aws/Prebid-fs'
-                }
-            ],
             'VpcId': {
-                'Ref': 'PrebidVpcD4BD0EC9'
+                'Ref': Match.string_like_regexp("PrebidVpc")
             }
         }
     )
@@ -705,11 +696,11 @@ def prebid_efs_access_point(template):
             'AccessPointTags': [
                 {
                     'Key': 'Name',
-                    'Value': 'prebid-server-deployment-on-aws/Prebid-fs-access-point'
+                    'Value': Match.string_like_regexp("fs-access-point")
                 }
             ],
             'FileSystemId': {
-                'Ref': 'Prebidfs001EB6C9'
+                'Ref': Match.string_like_regexp("Prebidfs")
             },
             'PosixUser': {
                 'Gid': '1001',
@@ -729,7 +720,8 @@ def prebid_efs_access_point(template):
 
 def prebid_task_default_policy(template):
     template.has_resource_properties(
-        "AWS::IAM::Policy", {
+        "AWS::IAM::Policy",
+        {
             'PolicyDocument': {
                 'Statement': [
                     {
@@ -743,10 +735,44 @@ def prebid_task_default_policy(template):
                             'ecr-public:DescribeImages',
                             'ecr-public:DescribeImageTags',
                             'ecr-public:GetRepositoryCatalogData',
-                            'ecr-public:GetRegistryCatalogData'
+                            'ecr-public:GetRegistryCatalogData',
+                            'ecr:BatchCheckLayerAvailability',
+                            'ecr:GetDownloadUrlForLayer',
+                            'ecr:BatchGetImage',
+                            'ecr:DescribeImages',
+                            'ecr:GetAuthorizationToken'
                         ],
                         'Effect': 'Allow',
                         'Resource': '*'
+                    },
+                    {
+                        'Action': [
+                            's3:GetObject',
+                            's3:ListBucket'
+                        ],
+                        'Effect': 'Allow',
+                        'Resource': [
+                            {
+                                'Fn::Join': [
+                                    '',
+                                    [
+                                        {
+                                            'Fn::GetAtt': [
+                                                Match.string_like_regexp("ContainerImageConfigFiles"),
+                                                'Arn'
+                                            ]
+                                        },
+                                        '/*'
+                                    ]
+                                ]
+                            },
+                            {
+                                'Fn::GetAtt': [
+                                    Match.string_like_regexp("ContainerImageConfigFiles"),
+                                    'Arn'
+                                ]
+                            }
+                        ]
                     },
                     {
                         'Action': [
@@ -770,7 +796,7 @@ def prebid_task_default_policy(template):
                                     },
                                     ':file-system/',
                                     {
-                                        'Ref': 'Prebidfs001EB6C9'
+                                        'Ref': Match.string_like_regexp("fs")
                                     }
                                 ]
                             ]
@@ -784,78 +810,10 @@ def prebid_task_default_policy(template):
                 ],
                 'Version': '2012-10-17'
             },
-            'PolicyName': 'PrebidTaskDefTaskRoleDefaultPolicy79CC0930',
+            'PolicyName': Match.string_like_regexp("PrebidTaskDefTaskRoleDefaultPolicy"),
             'Roles': [
                 {
-                    'Ref': 'PrebidTaskDefTaskRole4037D1B0'
-                }
-            ]
-        }
-    )
-
-
-def prebid_task_definition_task_role_iam_policy(template):
-    template.has_resource_properties(
-        "AWS::IAM::Policy",
-        {
-            'PolicyDocument': {
-                'Statement': [
-                    {
-                        "Action": [
-                            "ecr-public:GetAuthorizationToken",
-                            "sts:GetServiceBearerToken",
-                            "ecr-public:BatchCheckLayerAvailability",
-                            "ecr-public:GetRepositoryPolicy",
-                            "ecr-public:DescribeRepositories",
-                            "ecr-public:DescribeRegistries",
-                            "ecr-public:DescribeImages",
-                            "ecr-public:DescribeImageTags",
-                            "ecr-public:GetRepositoryCatalogData",
-                            "ecr-public:GetRegistryCatalogData"
-                        ],
-                        "Effect": "Allow",
-                        "Resource": "*"
-                    },
-                    {
-                        "Action": [
-                            "elasticfilesystem:ClientRootAccess",
-                            "elasticfilesystem:ClientWrite",
-                            "elasticfilesystem:ClientMount",
-                            "elasticfilesystem:DescribeMountTargets"
-                        ],
-                        "Effect": "Allow",
-                        "Resource": {
-                            "Fn::Join": [
-                                "",
-                                [
-                                    "arn:aws:elasticfilesystem:",
-                                    {
-                                        "Ref": "AWS::Region"
-                                    },
-                                    ":",
-                                    {
-                                        "Ref": "AWS::AccountId"
-                                    },
-                                    ":file-system/",
-                                    {
-                                        "Ref": "Prebidfs001EB6C9"
-                                    }
-                                ]
-                            ]
-                        }
-                    },
-                    {
-                        "Action": "ec2:DescribeAvailabilityZones",
-                        "Effect": "Allow",
-                        "Resource": "*"
-                    }
-                ],
-                'Version': '2012-10-17'
-            },
-            'PolicyName': 'PrebidTaskDefTaskRoleDefaultPolicy79CC0930',
-            'Roles': [
-                {
-                    'Ref': 'PrebidTaskDefTaskRole4037D1B0'
+                    'Ref': Match.string_like_regexp("PrebidTaskDefTaskRole")
                 }
             ]
         }
@@ -875,17 +833,17 @@ def prebid_elastic_load_balancer(template):
             'SecurityGroups': [
                 {
                     'Fn::GetAtt': [
-                        'PrebidALBsecuritygroup6F9AE31E',
+                        Match.string_like_regexp("ALBsecuritygroup"),
                         'GroupId'
                     ]
                 }
             ],
             'Subnets': [
                 {
-                    'Ref': 'PrebidVpcPrebidPublicSubnet1Subnet9285BD8C'
+                    'Ref': Match.string_like_regexp("PublicSubnet1")
                 },
                 {
-                    'Ref': 'PrebidVpcPrebidPublicSubnet2SubnetC0648D3F'
+                    'Ref': Match.string_like_regexp("PublicSubnet2")
                 }
             ],
             'Type': 'application'
@@ -906,7 +864,7 @@ def prebid_public_load_balancing_listener(template):
             }
         ],
         'LoadBalancerArn': {
-            'Ref': 'PrebidALBB2C5FAA5'
+            'Ref': Match.string_like_regexp("ALB"),
         },
         'Port': 80,
         'Protocol': 'HTTP'
@@ -929,7 +887,7 @@ def prebid_public_load_balancing_target_group(template):
         ],
         'TargetType': 'ip',
         'VpcId': {
-            'Ref': 'PrebidVpcD4BD0EC9'
+            'Ref': Match.string_like_regexp("Vpc"),
         }
     }
                                      )
@@ -969,7 +927,7 @@ def prebid_fargate_svc_service(template):
                     'ContainerName': 'Prebid-Container',
                     'ContainerPort': 8080,
                     'TargetGroupArn': {
-                        'Ref': 'PrebidALBPublicListenerECSGroup33C026E6'
+                        'Ref': Match.string_like_regexp("ALBTargetGroup"),
                     }
                 }
             ],
@@ -979,23 +937,23 @@ def prebid_fargate_svc_service(template):
                     'SecurityGroups': [
                         {
                             'Fn::GetAtt': [
-                                'PrebidFargateServiceSecurityGroupC61249EA',
+                                Match.string_like_regexp("FargateServiceSecurityGroup"),
                                 'GroupId'
                             ]
                         }
                     ],
                     'Subnets': [
                         {
-                            'Ref': 'PrebidVpcPrebidPrivateSubnet1Subnet8D5C76F3'
+                            'Ref': Match.string_like_regexp("PrivateSubnet1")
                         },
                         {
-                            'Ref': 'PrebidVpcPrebidPrivateSubnet2SubnetF3260A7F'
+                            'Ref': Match.string_like_regexp("PrivateSubnet2")
                         }
                     ]
                 }
             },
             'TaskDefinition': {
-                'Ref': 'PrebidTaskDef8717E6A5'
+                'Ref': Match.string_like_regexp("PrebidTaskDef"),
             }
         })
 
@@ -1051,7 +1009,7 @@ def alb5xx_error_alarm(template):
                 'Name': 'LoadBalancer',
                 'Value': {
                     'Fn::GetAtt': [
-                        'PrebidALBB2C5FAA5',
+                        Match.string_like_regexp("ALB"),
                         'LoadBalancerFullName'
                     ]
                 }
@@ -1077,7 +1035,7 @@ def alb4xx_error_alarm(template):
                 'Name': 'LoadBalancer',
                 'Value': {
                     'Fn::GetAtt': [
-                        'PrebidALBB2C5FAA5',
+                        Match.string_like_regexp("ALB"),
                         'LoadBalancerFullName'
                     ]
                 }
@@ -1092,52 +1050,10 @@ def alb4xx_error_alarm(template):
     })
 
 
-def data_sync_logs_task(template):
-    template.has_resource_properties("AWS::DataSync::Task", {
-        'DestinationLocationArn': {
-            'Fn::GetAtt': [
-                'DataSyncLogsS3Location8F0F3829',
-                'LocationArn'
-            ]
-        },
-        'Excludes': [
-            {
-                'FilterType': 'SIMPLE_PATTERN',
-                'Value': '*/prebid-server.log'
-            }
-        ],
-        'Name': {
-            'Fn::Join': [
-                '',
-                [
-                    {
-                        'Ref': 'AWS::StackName'
-                    },
-                    '-DataSyncLogs-task'
-                ]
-            ]
-        },
-        'Options': {
-            'LogLevel': 'BASIC',
-            'TransferMode': 'CHANGED',
-            'VerifyMode': 'ONLY_FILES_TRANSFERRED'
-        },
-        'Schedule': {
-            'ScheduleExpression': 'cron(30 * * * ? *)'
-        },
-        'SourceLocationArn': {
-            'Fn::GetAtt': [
-                'DataSyncLogsEfsLocationC673BE45',
-                'LocationArn'
-            ]
-        }
-    })
-
-
 def data_sync_metrics_bucket_policy(template):
     template.has_resource_properties("AWS::S3::BucketPolicy", {
         'Bucket': {
-            'Ref': 'DataSyncMetricsBucket76641540'
+            'Ref': Match.string_like_regexp("DataSyncMetricsBucket")
         },
         'PolicyDocument': {
             'Statement': [
@@ -1167,7 +1083,7 @@ def data_sync_metrics_bucket_policy(template):
                     'Principal': {
                         'AWS': {
                             'Fn::GetAtt': [
-                                'DataSyncMetricsS3LocationRoleF3453766',
+                                Match.string_like_regexp("MetricsEtlS3LocationRole"),
                                 'Arn'
                             ]
                         }
@@ -1175,7 +1091,7 @@ def data_sync_metrics_bucket_policy(template):
                     'Resource': [
                         {
                             'Fn::GetAtt': [
-                                'DataSyncMetricsBucket76641540',
+                                Match.string_like_regexp("DataSyncMetricsBucket"),
                                 'Arn'
                             ]
                         },
@@ -1185,7 +1101,7 @@ def data_sync_metrics_bucket_policy(template):
                                 [
                                     {
                                         'Fn::GetAtt': [
-                                            'DataSyncMetricsBucket76641540',
+                                            Match.string_like_regexp("DataSyncMetricsBucket"),
                                             'Arn'
                                         ]
                                     },
@@ -1205,13 +1121,13 @@ def efs_cleanup_vpc_custom_res(template):
     template.has_resource_properties("AWS::CloudFormation::CustomResource", {
         'ServiceToken': {
             'Fn::GetAtt': [
-                'EfsCleanupVpcEniFunction038EC712',
+                Match.string_like_regexp("EfsCleanupVpcEniFunction"),
                 'Arn'
             ]
         },
         'SECURITY_GROUP_ID': {
             'Fn::GetAtt': [
-                'EfsCleanupSecurityGroupE2A1266C',
+                Match.string_like_regexp("EfsCleanupSecurityGroup"),
                 'GroupId'
             ]
         }
@@ -1226,7 +1142,7 @@ def solution_metrics_anonymous_data(template):
                 'Arn'
             ]
         },
-        'Solution': 'Prebid Server Deployment on AWS',
+        'Solution': 'SO0248',
         'Region': {
             'Ref': 'AWS::Region'
         }
@@ -1308,7 +1224,7 @@ def metrics_etl_meter_table(template):
                         [
                             's3://',
                             {
-                                'Ref': 'MetricsEtlBucket69CB3729'
+                                'Ref': Match.string_like_regexp("MetricsEtlBucket")
                             },
                             '/type=meter/'
                         ]
@@ -1424,7 +1340,7 @@ def metrics_etl_histogram_table(template):
                         [
                             's3://',
                             {
-                                'Ref': 'MetricsEtlBucket69CB3729'
+                                'Ref': Match.string_like_regexp("MetricsEtlBucket")
                             },
                             '/type=histogram/'
                         ]
@@ -1500,7 +1416,7 @@ def metrics_etl_guage_table(template):
                         [
                             's3://',
                             {
-                                'Ref': 'MetricsEtlBucket69CB3729'
+                                'Ref': Match.string_like_regexp("MetricsEtlBucket")
                             },
                             '/type=gauge/'
                         ]
@@ -1565,7 +1481,7 @@ def metrics_etl_counter_table(template):
                         [
                             's3://',
                             {
-                                'Ref': 'MetricsEtlBucket69CB3729'
+                                'Ref': Match.string_like_regexp("MetricsEtlBucket")
                             },
                             '/type=counter/'
                         ]
@@ -1696,7 +1612,7 @@ def metrics_etl_timer_table(template):
                         [
                             's3://',
                             {
-                                'Ref': 'MetricsEtlBucket69CB3729'
+                                'Ref': Match.string_like_regexp("MetricsEtlBucket")
                             },
                             '/type=timer/'
                         ]

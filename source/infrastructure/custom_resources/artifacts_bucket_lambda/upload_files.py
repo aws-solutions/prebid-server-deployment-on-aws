@@ -12,13 +12,19 @@ import os
 from crhelper import CfnResource
 from aws_lambda_powertools import Logger
 import boto3
+from botocore import config
 
 FILE_DIR = "files"
+SOLUTION_ID = os.environ["SOLUTION_ID"]
+SOLUTION_VERSION = os.environ["SOLUTION_VERSION"]
 
 logger = Logger(service="artifacts-bucket-upload-lambda", level="INFO")
 helper = CfnResource(log_level="ERROR", boto_level="ERROR")
-s3_client = boto3.client("s3")
-
+# Add the solution identifier to boto3 requests for attributing service API usage
+boto_config = {
+    "user_agent_extra": f"AwsSolution/{SOLUTION_ID}/{SOLUTION_VERSION}"
+}
+s3_client = boto3.client("s3", config=config.Config(**boto_config))
 
 def event_handler(event, context):
     """
@@ -47,7 +53,6 @@ def upload_file(resource_properties) -> list:
     This function handles uploading files to the S3 artifacts bucket
     """
     artifacts_bucket_name = resource_properties["artifacts_bucket_name"]
-
     success = []
     for root, dirs, _ in os.walk(FILE_DIR):
         for subdir in dirs:

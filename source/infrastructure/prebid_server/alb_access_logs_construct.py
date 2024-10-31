@@ -35,6 +35,7 @@ class AlbAccessLogsConstruct(Construct):
             versioned=True,
             enforce_ssl=True,
             object_lock_enabled=True,
+            server_access_logs_prefix="access-logs/"
         )
 
         # Reference: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html
@@ -83,6 +84,19 @@ class AlbAccessLogsConstruct(Construct):
         self.alb_access_logs_bucket.add_to_resource_policy(
             self.enable_alb_access_logs_statement
         )
+        enable_s3_access_logs_statement = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            principals=[
+                iam.ServicePrincipal("logging.s3.amazonaws.com")
+            ],
+            actions=["s3:PutObject"],
+            resources=[
+                f"{self.alb_access_logs_bucket.bucket_arn}/access-logs/*"
+            ]
+        )
+        self.alb_access_logs_bucket.add_to_resource_policy(
+            enable_s3_access_logs_statement
+        )
 
         # Lambda function and Custom resource for enabling access logs for ALB
         self.enable_access_logs_function = SolutionsPythonFunction(
@@ -109,6 +123,10 @@ class AlbAccessLogsConstruct(Construct):
         self.enable_access_logs_function.add_environment(
             "SOLUTION_VERSION", self.node.try_get_context("SOLUTION_VERSION")
         )
+        # Suppress the cfn_guard rules indicating that this function should operate within a VPC and have reserved concurrency.
+        # A VPC is not necessary for this function because it does not need to access any resources within a VPC.
+        # Reserved concurrency is not necessary because this function is invoked infrequently.
+        self.enable_access_logs_function.node.find_child(id='Resource').add_metadata("guard", {'SuppressedRules': ['LAMBDA_INSIDE_VPC', 'LAMBDA_CONCURRENCY_CHECK']})
 
         self.enable_alb_access_logs_policy = iam.Policy(
             self,

@@ -16,8 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove python `setuptools` and `pip` from prebid server docker image
 - Include missing copyright header for `source/infrastructure/prebid_server/stack_constants.py`
 
-
 ## [1.0.2] - 2024-09-23
 
 - Upgrade Python `requests` package to version 2.32.3 in requirements.txt
 - Bug fix for launch failure of EfsCleanupContainerStop Lambda function
+
+## [1.1.0] - 2024-10-31
+- Upgrade to Prebid Server v3.13 and underlying Docker base image
+- ECS runtime logs in AWS CloudWatch instead of S3
+- Option to opt-out of installing CloudFront and WAF
+- Customize Prebid Server configuration through files in S3
+- Option to specify a custom container image 

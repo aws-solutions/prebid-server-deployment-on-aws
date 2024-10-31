@@ -1,0 +1,4 @@
+/logs/*
+/metrics/*
+bootstrap.log
+sample/configs/prebid-config.yaml

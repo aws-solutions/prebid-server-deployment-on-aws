@@ -32,19 +32,21 @@ def build_app_fix():
         return build_app()
 
 
+@pytest.mark.run(order=1)
 @mocked_common_services(
     add_patch=[
         "aws_cdk.App",
         "aws_cdk.aws_ecr_assets.DockerImageAsset",
-        "prebid_server.prebid_datasync_constructs.EfsLocation",
-        "prebid_server.prebid_datasync_constructs.S3Location",
-        "prebid_server.prebid_datasync_constructs.EfsCleanup",
-        "prebid_server.cloudtrail_construct.CloudTrailConstruct",
         "prebid_server.prebid_server_stack.PrebidServerStack",
-        "prebid_server.prebid_glue_constructs.GlueEtl",
+        "prebid_server.prebid_datasync_constructs.DataSyncMonitoring",
         "prebid_server.prebid_artifacts_constructs.ArtifactsManager",
-        "prebid_server.cloudwatch_metrics_construct.CloudwatchMetricsConstruct",
         "prebid_server.operational_metrics_construct.OperationalMetricsConstruct",
+        "prebid_server.cloudfront_entry_deployment.CloudFrontEntryDeployment",
+        "prebid_server.alb_entry_deployment.ALBEntryDeployment",
+        "prebid_server.vpc_construct.VpcConstruct",
+        "prebid_server.container_image_construct.ContainerImageConstruct",
+        "prebid_server.alb_access_logs_construct.AlbAccessLogsConstruct",
+        "prebid_server.docker_configs_construct.DockerConfigsManager",
     ]
 )
 def test_build_app(build_app_fix):
