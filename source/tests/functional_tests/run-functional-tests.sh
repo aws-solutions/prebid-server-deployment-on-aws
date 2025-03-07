@@ -130,6 +130,45 @@ cd $current_dir
 
 export CLOUDFRONT_ENDPOINT=$(aws cloudformation describe-stacks --stack-name $stack_name --query "Stacks[].Outputs[?OutputKey=='PrebidCloudFrontDistributionEndpoint'].OutputValue" --output text --profile $profile --region $default_region)
 
+export GLUE_JOB_NAME=$(aws cloudformation list-stack-resources \
+    --stack-name $stack_name \
+    --query 'StackResourceSummaries[?starts_with(LogicalResourceId, `MetricsEtlJob`) && ResourceType==`AWS::Glue::Job` && (ResourceStatus==`CREATE_COMPLETE` || ResourceStatus==`UPDATE_COMPLETE`)].PhysicalResourceId' \
+    --profile $profile --region $default_region \
+    --output text)
+
+export ATHENA_DATABASE=$(aws cloudformation list-stack-resources \
+    --stack-name $stack_name \
+    --query 'StackResourceSummaries[?starts_with(LogicalResourceId, `MetricsEtlDatabase`) && ResourceType==`AWS::Glue::Database` && (ResourceStatus==`CREATE_COMPLETE` || ResourceStatus==`UPDATE_COMPLETE`)].PhysicalResourceId' \
+    --profile $profile --region $default_region \
+    --output text)
+
+export ATHENA_QUERY_OUTPUT=$(aws cloudformation list-stack-resources \
+    --stack-name $stack_name \
+    --query 'StackResourceSummaries[?starts_with(LogicalResourceId, `ArtifactsBucket`) && ResourceType==`AWS::S3::Bucket` && (ResourceStatus==`CREATE_COMPLETE` || ResourceStatus==`UPDATE_COMPLETE`)].PhysicalResourceId' \
+    --profile $profile --region $default_region \
+    --output text)
+
+
+# This will be used to test histogram metrics if load test is setup for the stack
+TASK_DEF=$(aws cloudformation list-stack-resources \
+    --stack-name $stack_name \
+    --query 'StackResourceSummaries[?starts_with(LogicalResourceId, `CloudFrontEntryDeploymentECSTaskPrebidTaskDef`) && ResourceType==`AWS::ECS::TaskDefinition` && (ResourceStatus==`CREATE_COMPLETE` || ResourceStatus==`UPDATE_COMPLETE`)].PhysicalResourceId' \
+    --profile $profile --region $default_region \
+    --output text)
+
+# export any environment variable found for the container
+# AMT_BIDDING_SERVER_SIMULATOR_ENDPOINT and AMT_ADAPTER_ENABLED are required test histogram data
+eval $(aws ecs describe-task-definition \
+    --task-definition $TASK_DEF \
+    --query 'taskDefinition.containerDefinitions[?name==`Prebid-Container`].environment[]' \
+    --profile $profile --region $default_region \
+    --output text | while read name value; do
+        echo "export ${name}=${value}"
+    done)
+  
+export TEST_AWS_REGION=$default_region
+export TEST_AWS_PROFILE=$profile
+
 TEST_FILE_NAME=./${TEST_FILE_NAME-}
 
 pytest $TEST_FILE_NAME -vv -s -W ignore::DeprecationWarning -p no:cacheproviders ${extras-}

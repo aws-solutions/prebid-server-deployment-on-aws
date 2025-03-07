@@ -65,16 +65,36 @@ if [[ ${in_venv:-0} -ne 1 ]]; then
   echo "[Env] Create clean virtual environment and install dependencies"
   echo "------------------------------------------------------------------------------"
   cd $root_dir
+
   if [ -d $venv_folder ]; then
-    rm -rf $venv_folder
+      rm -rf $venv_folder
   fi
   python3 -m venv $venv_folder
   source $venv_folder/bin/activate
 
-  # configure the environment
+  # Check if poetry is installed
+  if ! command -v poetry &> /dev/null && [ ! -f "$POETRY_HOME/bin/poetry" ]; then
+    echo "Installing poetry..."
+    pip install --upgrade pip
+    cd $source_dir && pip install -q -r requirements-poetry.txt
+  elif [ -f "$POETRY_HOME/bin/poetry" ]; then
+    # Create symlink if poetry exists in POETRY_HOME
+    ln -s "$POETRY_HOME/bin/poetry" /usr/local/bin/poetry
+  fi
+
   cd $source_dir
-  pip install --upgrade pip
-  pip install -r $source_dir/requirements.txt
+
+  # Check if poetry.lock needs to be updated
+  if poetry check 2>&1 | grep -q "poetry.lock was last generated"; then
+      echo "------------------------------------------------------------------------------"
+      echo "[Poetry] Lock file needs to be updated"
+      echo "------------------------------------------------------------------------------"
+      poetry lock
+  fi
+
+  echo "Install dependencies using poetry"
+  poetry install --no-root
+
 else
   echo "------------------------------------------------------------------------------"
   echo "[Env] Using active virtual environment for tests"
@@ -93,7 +113,7 @@ echo "coverage report path set to $coverage_report_path"
 export PYTHONDONTWRITEBYTECODE=1
 # run unit tests
 TEST_FILE_NAME=$tests_folder/$TEST_FILE_NAME
-pytest $TEST_FILE_NAME ${extras-} --cov=$source_dir/infrastructure/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc -vv
+poetry run pytest $TEST_FILE_NAME ${extras-} --cov=$source_dir/infrastructure/ --cov-report term-missing --cov-report term --cov-report "xml:$coverage_report_path" --cov-config=$source_dir/.coveragerc -vv
 
 # The pytest --cov with its parameters and .coveragerc generates a xml cov-report with `coverage/sources` list
 # with absolute path for the source directories. To avoid dependencies of tools (such as SonarQube) on different
@@ -106,8 +126,11 @@ if [[ ${in_venv:-0} -ne 1 ]]; then
   echo "[Env] Deactivating test virtual environment"
   echo "------------------------------------------------------------------------------"
   echo ''
-  # deactivate the virtual environment
-  deactivate
+
+  if [ -d $venv_folder ]; then
+      # deactivate the virtual environment
+    deactivate
+  fi
 else
   echo "------------------------------------------------------------------------------"
   echo "[Env] Leaving virtual environment active"

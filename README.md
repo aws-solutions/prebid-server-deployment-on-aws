@@ -33,9 +33,12 @@ The following procedures assumes that all the OS-level configuration has been co
 
 * [AWS Command Line Interface](https://aws.amazon.com/cli/)
 * [Python](https://www.python.org/) 3.11 or newer
+* [Pypi/Pip](https://pypi.org/project/pip/) 25.0 or newer
+* [Poetry](https://python-poetry.org/docs/#installing-with-pipx) 2.0 or newer
 * [Node.js](https://nodejs.org/en/) 16.x or newer 
 * [AWS CDK](https://aws.amazon.com/cdk/) 2.140.0 or newer 
-* [Amazon Corretto OpenJDK](https://docs.aws.amazon.com/corretto/) 17
+* [Amazon Corretto OpenJDK](https://docs.aws.amazon.com/corretto/) 21
+* [Apache Maven](https://maven.apache.org/) 3.9.9
 * [Docker](https://docs.docker.com/engine/)
 * [AWS access key ID and secret access key](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) configured in your environment with AdministratorAccess equivalent permissions
 
@@ -43,15 +46,17 @@ The following procedures assumes that all the OS-level configuration has been co
 
 ### 1. Download or clone this repo
 ```
-git clone https://github.com/aws-solutions/prebid-server-deployment-on-aws
+git clone https://github.com/aws-solutions/prebid-server-deployment-on-aws.git
 ```
 
 ### 2. Create a Python virtual environment for development 
 ```bash 
+cd prebid-server-deployment-on-aws
 python3 -m venv .venv 
 source ./.venv/bin/activate 
 cd ./source 
-pip install -r requirements.txt
+pip install -r requirements-poetry.txt
+poetry install
 ```
 
 ### 2. After introducing changes, run the unit tests to make sure the customizations don't break existing functionality
@@ -168,7 +173,7 @@ If you'd like to use a different container:
 * Build and host the solution assets for installation in your account using the process described above
 * Change to the `deployment/global-s3-assets` folder on the build workstation
 * Open the file `prebid-server-deployment-on-aws.template` in an editor
-* Find the line in the template under the Task Definition resource that is `"Image": "public.ecr.aws/aws-solutions/prebid-server:v1.1.0",`
+* Find the line in the template under the Task Definition resource that is `"Image": "public.ecr.aws/aws-solutions/prebid-server:v1.1.1",`
 * Update the Image property value with your container image URI
 * Create the stack by uploading the changed template to the CloudFormation console
 

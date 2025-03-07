@@ -42,12 +42,12 @@ class DockerConfigsManager(Construct):
         """
         super().__init__(scope, id, **kwargs)
         self.docker_build_location = docker_build_location
+        self.copy_config_files()
         self.bucket = self.create_docker_config_bucket()
         self.upload_docker_configs_function = self.create_custom_resource_lambda()
         self.custom_resource = self.create_custom_resource(
             service_token_function=self.upload_docker_configs_function
         )
-        self.copy_config_files()
 
     def copy_config_files(self) -> None:
         """

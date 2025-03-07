@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "prebid-server-deployment-on-aws"
+version = "1.1.1"
+description = "Prebid Server Deployment on AWS - Easily deploy and operate a scalable Prebid Server for programmatic advertising auctions"
+license = "MIT"
+authors = ["https://docs.aws.amazon.com/solutions/latest/prebid-server-deployment-on-aws/contributors.html"]
+packages = [
+    { include = "source" },
+    { include = "source/**/*.py" }
+]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aws-cdk-lib = ">=2.140.0"
+boto3 = ">=1.24.11,<2.0.0"
+aws-lambda-powertools = "*"
+crhelper = "~2.0.11"
+pyparsing = "*"
+url_normalize = "*"
+docker = "*"
+cryptography = ">=44.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-env = ">=0.6.2"
+pytest-mock = ">=3.10.0"
+moto = ">=5.0.0"
+cdk-nag = "*"
+responses = "*"
+pytest-ordering = "*"
+
+[tool.poetry.group.local.dependencies]
+aws-solutions-cdk = {path = "cdk_solution_helper_py/helpers_cdk", develop = true}
+aws-solutions-python = {path = "cdk_solution_helper_py/helpers_common", develop = true}
+infrastructure = {path = "infrastructure", develop = true}
+unit-tests = {path = "tests", develop = true}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,35 @@
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Build outputs
+target/
+build/
+dist/
+*.class
+*.jar
+**/.gradle/*
+**/java/**/build
+
+# Logs and databases
+*.log
+/metrics/*
+bootstrap.log
+
+# OS generated files
+.DS_Store
+
+# Documentation
+*.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
+
+# Development configs
+.env
+
+
+# Maven
+.mvn/
