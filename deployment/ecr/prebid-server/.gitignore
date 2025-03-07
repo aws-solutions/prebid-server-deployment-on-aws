@@ -2,3 +2,5 @@
 /metrics/*
 bootstrap.log
 sample/configs/prebid-config.yaml
+.env
+nw-current-config/

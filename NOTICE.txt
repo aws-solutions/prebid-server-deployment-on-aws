@@ -10,78 +10,74 @@ specific language governing permissions and limitations under the License.
 **********************
 THIRD PARTY COMPONENTS
 **********************
+
 This software includes third party software subject to the following copyrights:
 
- Name                                             Version    License
- prebid-server-java                               3.13.0     Apache-2.0
- attrs                                            22.1.0     MIT License
- avro                                             1.11.1     Apache Software License
- aws-cdk-lib                                      2.140.0    Apache-2.0
- aws-cdk.asset-awscli-v1                          2.2.11     Apache-2.0
- aws-cdk.asset-kubectl-v20                        2.1.1      Apache-2.0
- aws-cdk.asset-node-proxy-agent-v5                2.0.17     Apache-2.0
- aws-lambda                                       0.2.0      Apache Software License
- aws-lambda-powertools                            1.31.0     MIT License; Other/Proprietary License
- aws-solutions-cdk                                2.0.0      Apache Software License
- aws-solutions-constructs.aws-eventbridge-lambda  2.25.0     Apache-2.0
- aws-solutions-constructs.aws-lambda-dynamodb     2.25.0     Apache-2.0
- aws-solutions-constructs.aws-lambda-sns          2.25.0     Apache-2.0
- aws-solutions-constructs.core                    2.25.0     Apache-2.0
- aws-solutions-python                             2.0.0      Apache Software License
- aws-xray-sdk                                     2.11.0     Apache Software License
- boto3                                            1.26.12    Apache Software License
- botocore                                         1.29.12    Apache Software License
- cattrs                                           22.2.0     MIT License
- cdk-nag                                          2.18.47    Apache-2.0
- certifi                                          2022.9.24  Mozilla Public License 2.0 (MPL 2.0)
- cffi                                             1.15.1     MIT License
- charset-normalizer                               2.0.12     MIT License
- click                                            8.1.3      BSD License
- constructs                                       10.1.163   Apache-2.0
- coverage                                         6.5.0      Apache Software License
- crhelper                                         2.0.11     Apache Software License
- cronex                                           0.1.3.1    MIT License
- cryptography                                     38.0.3     Apache Software License; BSD License
- docker                                           6.0.0      Apache Software License
- exceptiongroup                                   1.0.4      MIT License
- fastjsonschema                                   2.16.2     BSD License
- idna                                             3.4        BSD License
- infrastructure                                   1.0.0      Apache Software License
- iniconfig                                        1.1.1      MIT License
- Jinja2                                           3.1.2      BSD License
- jmespath                                         1.0.1      MIT License
- jsii                                             1.71.0     Apache Software License
- MarkupSafe                                       2.1.1      BSD License
- moto                                             4.0.3      Apache Software License
- mypy-extensions                                  0.4.3      MIT License
- packaging                                        21.3       Apache Software License; BSD License
- parsedatetime                                    2.6        Apache Software License
- pathspec                                         0.10.2     Mozilla Public License 2.0 (MPL 2.0)
- platformdirs                                     2.5.4      MIT License
- pluggy                                           1.0.0      MIT License
- publication                                      0.0.3      MIT License
- pycparser                                        2.21       BSD License
- pyparsing                                        3.0.9      MIT License
- pytest                                           7.2.0      MIT License
- pytest-cov                                       4.0.0      MIT License
- pytest-env                                       0.8.1      MIT License
- pytest-mock                                      3.10.0     MIT License
- python-dateutil                                  2.8.2      Apache Software License; BSD License
- pytz                                             2022.6     MIT License
- PyYAML                                           6.0.2      MIT License
- requests                                         2.32.3     Apache Software License
- responses                                        0.17.0     Apache 2.0
- s3transfer                                       0.6.0      Apache Software License
- shared                                           0.0.0      Apache Software License
- six                                              1.16.0     MIT License
- tenacity                                         8.1.0      Apache Software License
- tomli                                            2.0.1      MIT License
- typeguard                                        2.13.3     MIT License
- typing_extensions                                4.4.0      Python Software Foundation License
- urllib3                                          1.26.12    MIT License
- websocket-client                                 1.4.2      Apache Software License
- wrapt                                            1.14.1     BSD License
- xmltodict                                        0.13.0     MIT License
- wheel                                            0.38.4     MIT License
- Werkzeug                                         2.1.2      BSD License
- 
+alpinelinux/docker-alpine under the MIT license.
+github.com/prebid/prebid-server-java under the Apache-2.0 license.
+aws-cdk-asset-awscli-v1 under the Apache-2.0 license.
+aws-cdk-asset-kubectl-v20 under the Apache-2.0 license.
+aws-cdk-asset-node-proxy-agent-v6 under the Apache-2.0 license.
+aws-cdk-cloud-assembly-schema under the Apache-2.0 license.
+aws-cdk-lib under the Apache-2.0 license.
+aws-lambda-powertools under the MIT license.
+aws-solutions-cdk under the Apache-2.0 license.
+aws-solutions-python under the Apache-2.0 license.
+boto3 under the Apache-2.0 license.
+botocore under the Apache-2.0 license.
+cattrs under the MIT license.
+cdk-nag under the Apache-2.0 license.
+certifi under the MPL-2.0 license.
+cffi under the MIT license.
+charset-normalizer under the MIT license.
+click under the 0BSD license.
+colorama under the 0BSD license.
+constructs under the Apache-2.0 license.
+coverage under the Apache-2.0 license.
+crhelper under the Apache-2.0 license.
+cryptography under the Apache-2.0 license.
+docker under the Apache-2.0 license.
+idna under the 0BSD license.
+importlib-resources under the Apache-2.0 license.
+infrastructure under the MIT license.
+iniconfig under the MIT license.
+jinja2 under the 0BSD license.
+jmespath under the MIT license.
+jsii under the Apache-2.0 license.
+markupsafe under the 0BSD license.
+moto under the Apache-2.0 license.
+packaging under the Apache-2.0 license.
+pip under the MIT license.
+pluggy under the MIT license.
+publication under the MIT license.
+pycparser under the 0BSD license.
+pyparsing under the MIT license.
+pytest under the MIT license.
+pytest-cov under the MIT license.
+pytest-env under the MIT license.
+pytest-mock under the MIT license.
+pytest-ordering under the MIT license.
+python-dateutil under the Apache-2.0 license.
+pywin32 under the PSF-2.0 license.
+pyyaml under the MIT license.
+requests under the Apache-2.0 license.
+responses under the Apache-2.0 license.
+s3transfer under the Apache-2.0 license.
+six under the MIT license.
+typeguard under the MIT license.
+typing-extensions under the PSF-2.0 license.
+unit-tests under the Apache-2.0 license.
+url-normalize under the MIT license.
+urllib3 under the MIT license.
+werkzeug under the 0BSD license.
+xmltodict under the MIT license.
+
+********************
+OPEN SOURCE LICENSES
+********************
+
+0BSD - http://landley.net/toybox/license.html
+Apache-2.0 - https://www.apache.org/licenses/LICENSE-2.0
+PSF-2.0 - https://opensource.org/licenses/Python-2.0
+MIT - https://opensource.org/license/mit
+MPL-2.0 - https://www.mozilla.org/en-US/MPL/2.0/

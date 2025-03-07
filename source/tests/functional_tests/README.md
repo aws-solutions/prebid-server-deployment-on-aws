@@ -16,12 +16,16 @@ cd source/tests/functional_tests
 
 #### Optional Parameter Details:
 * `--in-venv`: Run functional tests in an existing virtual environment. If not running the tests in a venv, leave this parameter. [--in-venv 1]
-* `--test-file-name`: Run individual test file (optional) e.g --test-file-name test_bad_requests.py
+* `--test-file-name`: Run individual test file (optional) e.g --test-file-name test_bad_requests.py, --test-file-name test_bad_requests.py::test_request_rejected_by_waf_1
 * `--region`: AWS region for CLI commands (optional, default to us-east-1)
 * `--extras`: Append more commands to pytest run (optional)
 
 #### The following options are available:
 * `-h | --help`:       Print usage
 * `-v | --verbose`:    Print script debug info
+
+#### Test Histogram table
+* Follow instructions in [Load-Test README.MD](../../../source/loadtest/README.md)
+* Histogram test requires a load test of a deployed prebid-server stack with `AMT_ADAPTER_ENABLED` and `AMT_BIDDING_SERVER_SIMULATOR_ENDPOINT` running.
 
 
