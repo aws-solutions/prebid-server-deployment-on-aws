@@ -1,5 +1,5 @@
 {
+  "GIT_REPO": "https://github.com/prebid/prebid-server-java.git",
   "GIT_TAG_VERSION": "3.22.0",
   "MVN_CLI_OPTIONS": "-Dmaven.test.skip"
 }
-
