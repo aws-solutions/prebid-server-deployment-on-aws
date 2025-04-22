@@ -43,7 +43,7 @@ java.net.http,java.security.sasl,jdk.naming.dns,jdk.crypto.ec,jdk.security.auth 
 COPY docker-build-config.json docker-build-config.json
 
 # Clone and build in single layer to reduce size
-RUN git clone --single-branch --branch master --depth 1 https://github.com/prebid/prebid-server-java.git && \
+RUN git clone --single-branch --branch master --depth 1 $(jq -r .GIT_REPO ./docker-build-config.json) && \
     cd prebid-server-java && \
     git fetch origin --tags && \
     git checkout $(jq -r .GIT_TAG_VERSION ../docker-build-config.json) && \
