@@ -10,7 +10,7 @@ from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
 
 from .docker_configs_construct import DockerConfigsManager
 
-logging.basicConfig()
+logging.basicConfig() # NOSONAR
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

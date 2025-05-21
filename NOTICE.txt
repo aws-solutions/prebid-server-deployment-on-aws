@@ -15,6 +15,7 @@ This software includes third party software subject to the following copyrights:
 
 alpinelinux/docker-alpine under the MIT license.
 github.com/prebid/prebid-server-java under the Apache-2.0 license.
+attrs under the MIT license.
 aws-cdk-asset-awscli-v1 under the Apache-2.0 license.
 aws-cdk-asset-kubectl-v20 under the Apache-2.0 license.
 aws-cdk-asset-node-proxy-agent-v6 under the Apache-2.0 license.

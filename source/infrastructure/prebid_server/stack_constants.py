@@ -9,7 +9,7 @@ X_SECRET_HEADER_NAME = "X-Header-Secret"
 
 PVT_SUBNET_NAME = "Prebid-Private"
 PUB_SUBNET_NAME = "Prebid-Public"
-VPC_CIDR = "10.8.0.0/16"
+VPC_CIDR = "10.8.0.0/16" # NOSONAR
 CIDR_MASK = 20
 MAX_AZS = 2
 NAT_GATEWAYS = 2

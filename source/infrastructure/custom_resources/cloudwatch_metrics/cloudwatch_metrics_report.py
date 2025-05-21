@@ -116,14 +116,16 @@ class CloudwatchMetricsReport:
                     statistics=self.statistics,
                     dimensions=[{"Name": "stack-name", "Value": STACK_NAME}],
                 )
-                data["Data"].update(
-                    self.prepare_metric_data(
+                metric_data = self.prepare_metric_data(
                         response=lambda_stat_response,
                         metric_name=metric_name,
                         metric_tag=metric_tag,
                         sum_all_datapoints=False,
                     )
-                )
+                if not metric_data:
+                    raise ValueError(f"No metric data found for metric {metric_name}")
+
+                data["Data"].update(metric_data)
             except Exception as e:
                 logger.info(f"Fail to prepare metrics data for {metric_name}. Error: {e}")
                 continue
@@ -164,16 +166,19 @@ class CloudwatchMetricsReport:
                     statistics=self.statistics,
                     dimensions=cf_cw_metric["Dimensions"],
                 )
-                data["Data"].update(
-                    self.prepare_metric_data(
-                        response=cf_response,
-                        metric_name=cf_cw_metric_name,
-                        metric_tag=metric_tag,
-                    )
+
+                metric_data = self.prepare_metric_data(
+                    response=cf_response,
+                    metric_name=cf_cw_metric_name,
+                    metric_tag=metric_tag,
                 )
+                if not metric_data:
+                    raise ValueError(f"No metric data found for metric {metric_tag}-{cf_cw_metric_name}")
+
+                data["Data"].update(metric_data)
+
                 metric = f"{metric_tag}-{cf_cw_metric_name}"
-                if not data["MetricData"].get(metric):
-                    data["MetricData"][metric] = {}
+                data["MetricData"].setdefault(metric, {})
                 data["MetricData"][metric].update(
                     {
                         "value": data["Data"][metric],
@@ -228,17 +233,18 @@ class CloudwatchMetricsReport:
                         statistics=self.statistics,
                         dimensions=nat_metric["Dimensions"],
                     )
-
-                    data["Data"].update(
-                        self.prepare_metric_data(
-                            response=nat_cw_stat_response,
-                            metric_name=nat_metric_name,
-                            metric_tag=metric_tag,
-                        )
+                    metric_data = self.prepare_metric_data(
+                        response=nat_cw_stat_response,
+                        metric_name=nat_metric_name,
+                        metric_tag=metric_tag,
                     )
+                    if not metric_data:
+                        raise ValueError(f"No metric data found for metric {metric_tag}-{nat_metric_name}")
+
+                    data["Data"].update(metric_data)
+
                     metric = f"{metric_tag}-{nat_metric_name}"
-                    if not data["MetricData"].get(metric):
-                        data["MetricData"][metric] = {}
+                    data["MetricData"].setdefault(metric, {})
                     data["MetricData"][metric].update(
                         {
                             "value": data["Data"][metric],
@@ -272,16 +278,18 @@ class CloudwatchMetricsReport:
                     statistics=["SampleCount", "Average", *self.statistics],
                     dimensions=elb_metric["Dimensions"],
                 )
-                data["Data"].update(
-                    self.prepare_metric_data(
-                        response=elb_stat_response,
-                        metric_name=elb_metric_name,
-                        metric_tag=metric_tag,
-                    )
+                metric_data = self.prepare_metric_data(
+                    response=elb_stat_response,
+                    metric_name=elb_metric_name,
+                    metric_tag=metric_tag,
                 )
+                if not metric_data:
+                    raise ValueError(f"No metric data found for metric {metric_tag}-{elb_metric_name}")
+
+                data["Data"].update(metric_data)
+
                 metric = f"{metric_tag}-{elb_metric_name}"
-                if not data["MetricData"].get(metric):
-                    data["MetricData"][metric] = {}
+                data["MetricData"].setdefault(metric, {})
                 data["MetricData"][metric].update(
                     {
                         "value": data["Data"][metric],
@@ -333,25 +341,29 @@ class CloudwatchMetricsReport:
 
     def put_metric_data(self, metric_data):
         for metric_name, metric_data_value in metric_data.items():
-            self.cloudwatch_client.put_metric_data(
-                Namespace=METRICS_NAMESPACE,
-                MetricData=[
-                    {
-                        "MetricName": metric_name,
-                        "Dimensions": metric_data_value["dimensions"],
-                        "Unit": metric_data_value["datapoints"]["Unit"],
-                        "Timestamp": metric_data_value["datapoints"]["Timestamp"],
-                        "StatisticValues": {
-                            "SampleCount": metric_data_value["datapoints"][
-                                "SampleCount"
-                            ],
-                            "Sum": metric_data_value["datapoints"]["Sum"],
-                            "Minimum": metric_data_value["datapoints"]["Minimum"],
-                            "Maximum": metric_data_value["datapoints"]["Maximum"],
-                        },
-                    }
-                ],
-            )
+            try:
+                self.cloudwatch_client.put_metric_data(
+                    Namespace=METRICS_NAMESPACE,
+                    MetricData=[
+                        {
+                            "MetricName": metric_name,
+                            "Dimensions": metric_data_value["dimensions"],
+                            "Unit": metric_data_value["datapoints"]["Unit"],
+                            "Timestamp": metric_data_value["datapoints"]["Timestamp"],
+                            "StatisticValues": {
+                                "SampleCount": metric_data_value["datapoints"][
+                                    "SampleCount"
+                                ],
+                                "Sum": metric_data_value["datapoints"]["Sum"],
+                                "Minimum": metric_data_value["datapoints"]["Minimum"],
+                                "Maximum": metric_data_value["datapoints"]["Maximum"],
+                            },
+                        }
+                    ],
+                )
+            except Exception as e:
+                logger.info(f"Fail to put metric data on CloudWatch for {metric_name}. Error: {e}")
+                continue
 
 
 def event_handler(event, context):
