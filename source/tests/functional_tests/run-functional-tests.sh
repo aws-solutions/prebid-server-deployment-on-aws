@@ -20,7 +20,8 @@ Available options:
 --stack-name      Name of the Cloudformation stack where the solution is running
 --profile         AWS profile for CLI commands
 --region          AWS region for CLI commands (optional, default to us-east-1)
---test-file-name  Run individual test file (optional) e.g --test-file-name test_bad_requests.py
+--test-file-name  Run individual test file (optional) e.g --test-file-name test_bad_requests.py,
+                  Run individual test function (optional) e.g --test-file-name test_bad_requests.py::test_request_rejected_by_waf_1
 
 EOF
   exit 1
@@ -148,6 +149,7 @@ export ATHENA_QUERY_OUTPUT=$(aws cloudformation list-stack-resources \
     --profile $profile --region $default_region \
     --output text)
 
+export CACHE_KEY=$(aws cloudformation describe-stacks --stack-name $stack_name --query "Stacks[].Outputs[?OutputKey=='XCacheKey'].OutputValue" --output text --profile $profile --region $default_region)
 
 # This will be used to test histogram metrics if load test is setup for the stack
 TASK_DEF=$(aws cloudformation list-stack-resources \
@@ -171,7 +173,27 @@ export TEST_AWS_PROFILE=$profile
 
 TEST_FILE_NAME=./${TEST_FILE_NAME-}
 
-pytest $TEST_FILE_NAME -vv -s -W ignore::DeprecationWarning -p no:cacheproviders ${extras-}
+# Common test options
+TEST_OPTIONS="-vv -s -W ignore::DeprecationWarning -p no:cacheproviders ${extras-}"
+
+# Check if poetry exists in POETRY_HOME
+if [ -n "${POETRY_HOME:-}" ] && [ -f "$POETRY_HOME/bin/poetry" ]; then
+    echo "Found poetry at: $POETRY_HOME/bin/poetry"
+    if [ ! -L "/usr/local/bin/poetry" ]; then
+      ln -s "$POETRY_HOME/bin/poetry" /usr/local/bin/poetry
+    fi
+    poetry run pytest $TEST_FILE_NAME $TEST_OPTIONS
+
+# Check if poetry exists in system PATH
+elif command -v poetry &> /dev/null; then
+    echo "Found poetry in system PATH"
+    poetry run pytest $TEST_FILE_NAME $TEST_OPTIONS
+
+# Fallback to system pytest
+else
+    echo "Using system pytest as poetry was not found"
+    pytest $TEST_FILE_NAME $TEST_OPTIONS
+fi
 
 if [[ ${in_venv:-0} -ne 1 ]]; then
   echo "Deactivate virtualenv"

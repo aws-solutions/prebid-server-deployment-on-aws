@@ -59,7 +59,7 @@ def compress_log_file(log_folder_path: Path, log_file_name: str):
         / f"{log_file_name.split('.')[0]}.{utc_time.year}-{utc_time.month:02d}-{utc_time.day:02d}_{utc_time.hour:02d}.log.gz"
     )
 
-    with tarfile.open(file_to_compress, "w:gz") as tar:
+    with tarfile.open(file_to_compress, "w:gz") as tar: # NOSONAR
         tar.add(log_file_path)
 
     logger.info(f"Log file compressed: {file_to_compress}")

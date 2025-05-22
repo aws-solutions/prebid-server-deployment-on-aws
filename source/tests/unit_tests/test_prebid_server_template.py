@@ -79,7 +79,7 @@ def mapping_solution(template):
         {
             'Data': {
                 'ID': "SO0248",
-                'Version': "v1.1.1",
+                'Version': "v1.1.2",
                 'SendAnonymizedData': 'Yes'
             }
         }
@@ -92,7 +92,7 @@ def mapping_source_code(template):
         {
             'General': {
                 'S3Bucket': "BUCKET_NAME",
-                'KeyPrefix': 'Prebid Server Deployment on AWS/v1.1.1'
+                'KeyPrefix': 'Prebid Server Deployment on AWS/v1.1.2'
             }
         }
     )

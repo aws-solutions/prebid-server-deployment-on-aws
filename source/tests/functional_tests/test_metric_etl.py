@@ -115,6 +115,7 @@ class AthenaQueryExecutor:
         )
         query_id = response["QueryExecutionId"]
 
+        retry_count = 0
         # Wait for query completion
         while True:
             result = self.client.get_query_execution(QueryExecutionId=query_id)
@@ -125,7 +126,10 @@ class AthenaQueryExecutor:
                 if status == "SUCCEEDED":
                     return self._get_query_results(query_id)
                 raise Exception(f"Athena query failed: {status}")
-            time.sleep(5)
+            elif retry_count > MAX_ATHENA_RETRIES:
+                raise AssertionError(f"{query} - Athena has elasped MAX_ATHENA_RETRIES {retry_count}: {status}")
+            retry_count += 1
+            time.sleep(10)
 
     def _get_query_results(self, query_id: str) -> Optional[Dict]:
         """Retrieve query results"""
@@ -171,15 +175,17 @@ def athena_executor(get_service_session, config) -> AthenaQueryExecutor:
 def get_athena_executor_results() -> Callable:
     """ Get Athena query results """
     def _get_executor_results(athena_executor: AthenaQueryExecutor, table_name: str) -> str:
-        logger.info("Waiting for Athena query results...")
+        logger.info(f"Athena {table_name} table query results...")
         time.sleep(10)
         retry_count = 0
         result = athena_executor.query_table(table_name)
         while result is None:
+            logger.info(f"Waiting for Athena {table_name} table query results...")
             time.sleep(10)
             result = athena_executor.query_table(table_name)
             if retry_count > MAX_ATHENA_RETRIES:
                 raise AssertionError(f"{table_name} metrics not found in Athena.")
+            retry_count += 1
         return result
     return _get_executor_results
 

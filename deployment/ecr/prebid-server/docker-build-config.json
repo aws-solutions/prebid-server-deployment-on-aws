@@ -1,5 +1,5 @@
 {
-  "GIT_TAG_VERSION": "3.22.0",
+  "GIT_TAG_VERSION": "3.25.0",
   "MVN_CLI_OPTIONS": "-Dmaven.test.skip"
 }
 
