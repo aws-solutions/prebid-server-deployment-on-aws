@@ -1,7 +1,7 @@
 
 # Prebid Server Deployment on AWS
 
-This solution deploys v3.27.0 of [Prebid Server Java](https://github.com/prebid/prebid-server-java.git) with infrastructure in a single region of the AWS Cloud to handle a wide range of request traffic, and recording of auction and bid transaction data.
+This solution deploys v3.13.0 of [Prebid Server Java](https://github.com/prebid/prebid-server-java.git) with infrastructure in a single region of the AWS Cloud to handle a wide range of request traffic, and recording of auction and bid transaction data.
 
 ## Architecture 
 
@@ -173,7 +173,7 @@ If you'd like to use a different container:
 * Build and host the solution assets for installation in your account using the process described above
 * Change to the `deployment/global-s3-assets` folder on the build workstation
 * Open the file `prebid-server-deployment-on-aws.template` in an editor
-* Find the line in the template under the Task Definition resource that is `"Image": "public.ecr.aws/aws-solutions/prebid-server:v1.1.3",`
+* Find the line in the template under the Task Definition resource that is `"Image": "public.ecr.aws/aws-solutions/prebid-server:v1.1.4",`
 * Update the Image property value with your container image URI
 * Create the stack by uploading the changed template to the CloudFormation console
 
