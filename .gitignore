@@ -18,9 +18,7 @@ __pycache__/
 *.egg
 
 # Python Virtual Environments
-**/venv*
 **/.venv*
-!deployment/venv_check.py
 .python-version
 
 ## Python Testing
@@ -47,6 +45,9 @@ source/.coverage.*
 
 # Glue
 .glue/*
+
+# Builder tools
+build/*
 
 # Generated test assets
 source/infrastructure/tests/assets/*
@@ -75,5 +76,9 @@ source/aws_lambda/shared/util/build/*
 *.dtmp
 
 # generated files
-source/infrastructure/custom_resources/docker_configs_bucket_lambda/current-config/
-source/infrastructure/custom_resources/docker_configs_bucket_lambda/default-config/
+source/infrastructure/custom_resources/prebid_configs_lambda/current-config
+source/infrastructure/custom_resources/prebid_configs_lambda/default-config
+source/infrastructure/custom_resources/prebid_configs_lambda/stored_accounts
+source/infrastructure/custom_resources/prebid_configs_lambda/stored_requests
+source/infrastructure/custom_resources/prebid_configs_lambda/stored_responses
+source/infrastructure/custom_resources/prebid_configs_lambda/stored_impressions
